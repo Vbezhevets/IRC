@@ -48,5 +48,7 @@ class Client{
             return !_out_buff.empty();
         }
 
-
+        int getFd()const {
+            return _fd;
+        }
 };
