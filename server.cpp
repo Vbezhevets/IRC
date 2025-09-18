@@ -33,7 +33,7 @@ void Server::init() {
     if (fcntl(_listen_fd, F_SETFL, fl | O_NONBLOCK) == -1)
         throw std::runtime_error("fcntl F_SETFL O_NONBLOCK listen");
 
-    pollfd pfd;
+    pollfd pfd; 
     pfd.fd = _listen_fd;
     pfd.events = POLLIN;
     pfd.revents = 0;
@@ -50,9 +50,9 @@ void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
         int client_fd = accept(_listen_fd, reinterpret_cast<sockaddr*>(&addr), &len);
 
         if (client_fd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            if (errno == EAGAIN || errno == EWOULDBLOCK) //  nothing (all from queue were accepted)
                 break;
-            if (errno == EINTR)
+            if (errno == EINTR) //прерван repeat
                 continue;
             throw std::runtime_error("accept error");
         }
@@ -99,8 +99,8 @@ bool Server::handleRead(int fd) {
             _clients[fd].appendInBuff(buff, static_cast<std::size_t>(n));
             std::string msg;
 
-            while (IRC::extractOneMessage(client.getInBuff(), msg)) {
-                std::string resp = IRC::handleMessage(fd, msg);
+            while (IRC::extractOneMessage(client.getInBuff(), msg)) { // we clean bufer inside if needed (full mess recieved)
+                std::string resp = IRC::handleMessage(*this, client, msg);
                 if (!resp.empty())
                     client.addToOutBuff(resp);
             }
@@ -139,7 +139,7 @@ bool Server::handleWrite(int fd) {
 
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return true;
-        if (errno == EINTR)
+        if (errno == EINTR) //прерван repeat
             continue;
         return false;
     }
@@ -157,12 +157,12 @@ void Server::run() {
         std::vector<int> toDrop;
         int r = poll(&_pfds[0], _pfds.size(), 200);
         if (r < 0) {
-            if (errno == EINTR)
+            if (errno == EINTR) //прерван repeat
                 continue;
             throw std::runtime_error("poll error");
         }
         if (r == 0) {
-            tick(toDrop);
+            tick(toDrop); //checking existing for hanging
             continue;
         }
 
@@ -172,17 +172,17 @@ void Server::run() {
             if (_pfds[i].revents == 0)
                 continue;
 
-            if (_pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) {
+            if (_pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) { // disconnected
                 toDrop.push_back(_pfds[i].fd);
                 continue;
             }
 
-            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) {
+            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) { // new
                 acceptNewClients(toAdd);
                 continue;
             }
 
-            if (_pfds[i].revents & POLLIN) {
+            if (_pfds[i].revents & POLLIN) {   
                 if (!handleRead(_pfds[i].fd)) {
                     toDrop.push_back(_pfds[i].fd);
                     continue;
@@ -221,3 +221,11 @@ void Server::tick(std::vector<int>& toDrop) {
     // if no activity toDrop.push_back(fd);
  
 }
+
+/*
+	•	POLLERR → ошибка на дескрипторе.
+	•	POLLHUP → разрыв соединения (закрыт другой стороной).
+	•	POLLNVAL → неверный дескриптор (обычно баг в программе).
+        EINTR
+⸻
+*/

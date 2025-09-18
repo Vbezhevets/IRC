@@ -23,8 +23,10 @@ class Client{
         // sockaddr_in _addr;
         std::string _in_buff;
         std::string _out_buff;
-        std::string _nickname;
+        std::string _nick;
+        std::string _user;
 
+        
 
     public:
         Client():_fd(-1) {};
