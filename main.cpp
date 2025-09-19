@@ -1,4 +1,4 @@
-#include "server.hpp"
+#include "Server.hpp"
 #include <exception>
 #include <sstream>
 #include <stdexcept>
@@ -31,7 +31,7 @@ int main(int argc , char **argv) {
         Server s(port, argv[2]);
         std::signal(SIGINT, signal_handler);
         s.init();
-        // s.run();
+        s.run();
     }
     catch (const std::exception &e){
         std::cerr << "Error: " << e.what() <<std::endl; 

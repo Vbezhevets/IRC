@@ -1,10 +1,11 @@
 
-#pragma once
 #include "Irc.hpp"
-#include "Client.hpp"
+
 #include <string>
 #include <vector>
 #include <cctype>
+
+std::map<std::string, IRC::handler> IRC::handlers;
 
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     std::size_t pos = buff.find("\r\n");
@@ -27,7 +28,8 @@ void IRC::initHandlers() {
     handlers["PART"]    = &handlePART;
 }
 
-std::string  IRC:: handleMessage(Server& s, Client& client, std::string& msg) {
+
+std::string  IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     command tempCmd = parseLine(msg);
     std::string reply = ":server 421 * :Unknown command\r\n";
     if (tempCmd.cmd.empty())

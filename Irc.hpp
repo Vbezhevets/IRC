@@ -1,10 +1,12 @@
+#pragma once
 #include <sstream>
 #include <string>
 #include <sys/poll.h>
 #include <vector>
 #include <map>
-#include "Server.hpp"
-#include "Client.hpp"
+class Server;
+class Client;
+
 
 
 class IRC {
@@ -18,6 +20,16 @@ class IRC {
         };
 
         //handlers for commands:
+        typedef std::string (*handler)(Server& , Client&, command& ) ;
+        
+        static std::map <std::string, handler> handlers ;
+        
+        static void initHandlers();
+        
+        static bool extractOneMessage(std::string& buff, std::string& msg) ;
+        static std::string handleMessage(Server& s, Client& cleint, const std::string& msg) ;
+        static command  parseLine(std::string line);
+        
         static std::string handlePASS(Server&, Client&, command&);
         static std::string handleNICK(Server&, Client&, command&);
         static std::string handleUSER(Server&, Client&, command&);
@@ -26,11 +38,4 @@ class IRC {
         static std::string handleJOIN(Server&, Client&, command&);
         static std::string handlePART(Server&, Client&, command&);
 
-        typedef std::string (*handler)(Server& , Client&, command& ) ;
-        static std::map <std::string, handler> handlers ;
-        
-        static bool extractOneMessage(std::string& buff, std::string& msg) ;
-        static std::string handleMessage(Server&, Client&, std::string& msg) ;
-        static command  parseLine(std::string line);
-        static void initHandlers();
     };

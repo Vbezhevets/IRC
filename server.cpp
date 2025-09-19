@@ -38,6 +38,7 @@ void Server::init() {
     pfd.events = POLLIN;
     pfd.revents = 0;
     _pfds.push_back(pfd);
+    IRC::initHandlers();
 }
 
 void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
@@ -161,10 +162,10 @@ void Server::run() {
                 continue;
             throw std::runtime_error("poll error");
         }
-        if (r == 0) {
-            tick(toDrop); //checking existing for hanging
-            continue;
-        }
+        // if (r == 0) {
+        //     tick(toDrop); //checking existing for hanging
+        //     continue;
+        // }
 
 
 
@@ -216,11 +217,11 @@ void Server::run() {
         }
     }
 }
-void Server::tick(std::vector<int>& toDrop) {
-    time_t now = time(NULL);
-    // if no activity toDrop.push_back(fd);
+// void Server::tick(std::vector<int>& toDrop) {
+//     time_t now = time(NULL);
+//     // if no activity toDrop.push_back(fd);
  
-}
+// }
 
 /*
 	•	POLLERR → ошибка на дескрипторе.
