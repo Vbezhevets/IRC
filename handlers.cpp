@@ -1,4 +1,5 @@
 #include "Irc.hpp"
+#include "Client.hpp"
 
 std::string IRC:: handlePASS(Server& S, Client& client,  IRC::command& cmd){
    (void)S; (void)client; (void)cmd; return "";
@@ -21,6 +22,14 @@ std::string IRC:: handlePING(Server& S, Client& client,  IRC::command& cmd){
     return "";
 };
   
+
+std::string IRC:: handlePONG(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)cmd;
+    client.updateActive();
+    client.setAwaitingPong(false);
+    return "";
+};
+
 std::string IRC:: handlePRIVMSG(Server& S, Client& client,  IRC::command& cmd){
     (void)S; (void)client; (void)cmd; return "";
 };

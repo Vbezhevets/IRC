@@ -26,6 +26,8 @@ void IRC::initHandlers() {
     handlers["PRIVMSG"] = &handlePRIVMSG;
     handlers["JOIN"]    = &handleJOIN;
     handlers["PART"]    = &handlePART;
+    handlers["TICK"]    = &handlePONG;
+
 }
 
 

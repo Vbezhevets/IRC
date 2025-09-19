@@ -1,5 +1,8 @@
 #include "Server.hpp"
 #include "Irc.hpp"
+#include <cstdlib>
+#include <future>
+#include <string>
 
 extern volatile sig_atomic_t g_running;
 
@@ -84,7 +87,7 @@ void Server::setEvents(int fd, short ev) {
 }
 
 Client& Server::getClient(int fd) {
-    std::map<int, Client>::iterator it = _clients.find(fd);
+    clIter it = _clients.find(fd);
     if (it == _clients.end())
         throw std::runtime_error("invalid fd client");
     return it->second;
@@ -162,12 +165,6 @@ void Server::run() {
                 continue;
             throw std::runtime_error("poll error");
         }
-        // if (r == 0) {
-        //     tick(toDrop); //checking existing for hanging
-        //     continue;
-        // }
-
-
 
         for (std::size_t i = 0; i < _pfds.size(); ++i) {
             if (_pfds[i].revents == 0)
@@ -178,7 +175,7 @@ void Server::run() {
                 continue;
             }
 
-            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) { // new
+            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) {  
                 acceptNewClients(toAdd);
                 continue;
             }
@@ -197,8 +194,9 @@ void Server::run() {
                 }
             }
         }
-
+        tick(toDrop); //checking existing for hanging
         if (!toDrop.empty()) {
+
             for (std::vector<int>::iterator it = toDrop.begin(); it != toDrop.end(); ++it) {
                 close(*it);
                 _clients.erase(*it);
@@ -207,7 +205,7 @@ void Server::run() {
                     if (pit->fd == *it)
                         pit = _pfds.erase(pit);
                     else
-                        ++pit;
+                        ++pit; //
                 }
             }
         }
@@ -217,11 +215,22 @@ void Server::run() {
         }
     }
 }
-// void Server::tick(std::vector<int>& toDrop) {
-//     time_t now = time(NULL);
-//     // if no activity toDrop.push_back(fd);
- 
-// }
+void Server::tick(std::vector<int>& toDrop) {
+    time_t now = time(NULL);
+    for (clIter it = _clients.begin(); it != _clients.end(); ++it ){
+        Client& client = it->second;
+
+        if (!client.isAwaitingPong() && now - client.lastActive() > 12 ) {
+            client.setAwaitingPong(true);
+            client.addToOutBuff("PING :tick\r\n");
+            setEvents(client.getFd(), POLLIN | POLLOUT);
+        }
+        else if (client.isAwaitingPong() && now - client.lastActive() > 15){
+            toDrop.push_back(client.getFd());
+        }
+    }
+
+}   
 
 /*
 	•	POLLERR → ошибка на дескрипторе.

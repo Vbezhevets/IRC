@@ -31,8 +31,11 @@ private:
     bool handleRead(int fd);
     bool handleWrite(int fd);
     void acceptNewClients(std::vector<pollfd>& toAdd);
+    
 
 public:
+
+    typedef std::map<int, Client> ::iterator clIter; // :DDDDD
     Server(int port, const std::string& p);
 
     void init();

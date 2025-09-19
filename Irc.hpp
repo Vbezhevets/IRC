@@ -37,5 +37,6 @@ class IRC {
         static std::string handlePRIVMSG(Server&, Client&, command&);
         static std::string handleJOIN(Server&, Client&, command&);
         static std::string handlePART(Server&, Client&, command&);
-
+        static std::string handlePONG(Server&, Client&, command&);
+        
     };
