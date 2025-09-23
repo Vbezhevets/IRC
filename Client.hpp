@@ -1,71 +1,63 @@
 #pragma once
-#include <cstddef>
-#include <ctime>
-#include <iostream>
-#include <iterator>
-#include <stdexcept>
+
 #include <string>
-#include <sys/poll.h>
-#include <vector>
-#include <map>
-#include <cerrno>
-#include <csignal>
-#include <unistd.h>
-#include <fcntl.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <poll.h>
-#include <netinet/in.h>
+#include <ctime>
 
-class Client{
-    private:
-        int         _fd;
-        // sockaddr_in _addr;
-        std::string _in_buff;
-        std::string _out_buff;
-        std::string _nick;
-        std::string _user;
-        time_t      _last_active;
-        bool        awaitingPong;
+class Client {
+private:
+    int         _fd;
+    std::string _in_buff;
+    std::string _out_buff_for_client; // server writes to client here
+
+    std::string _nick;
+    std::string _user;
+    std::string _realname;
+    std::string _host;
+
+    bool        _passOk; 
+    bool        _hasNick; 
+    bool        _hasUser; 
+    bool        _isRegistered; 
+ 
+
+    std::time_t _last_active;
+    bool        _awaitingPong;
+
+ 
+    // bool readyForRegistration() const; 
+    void tryMakeRegistered();    
+
+public:
+    Client();
+    Client(int fd, std::string host);
+    ~Client();
 
 
-    public:
-        Client():_fd(-1) {};
-        Client(int fd) : _fd(fd),  awaitingPong(false){
-            updateActive();
-            // std:: cout << std::to_string(_fd ) << std::endl;  // temporary
-        };
-        void appendInBuff(const char *data, size_t n) {
-            _in_buff.append(data, n);
-        }
-        std::string& getInBuff() {
-            return _in_buff;
-        }
-        std::string& getOutBuff() {
-            return _out_buff;
-        }
-        void addToOutBuff(const std::string& s) {
-            _out_buff += s;
-        }
-        
-        bool wantsWrite() const {
-            return !_out_buff.empty();
-        }
-        time_t lastActive(){
-            return _last_active;
-        }
-        void updateActive(){
-        _last_active = (time(NULL));
-        }
-        
-        bool isAwaitingPong(){
-            return awaitingPong;
-        }
-        void setAwaitingPong(bool b){
-            awaitingPong = b;
-        }
-        int getFd()const {
-            return _fd;
-        }
+    void appendInBuff(const char* data, std::size_t n);
+    std::string& getInBuff();
+    std::string& getOutBuff();
+    void addToOutBuff(const std::string& s);
+    bool wantsWrite() const;
+
+    std::time_t lastActive() const;
+    void updateActive();
+
+    bool isAwaitingPong() const;
+    void setAwaitingPong(bool b);
+
+    int getFd() const;
+
+
+    void setNick(const std::string& nick);
+    const std::string& getNick() const;
+
+    void setUser(const std::string& user, const std::string& realname);
+    const std::string& getUserName() const;
+    const std::string& getRealName() const;
+    const std::string& getHost() const;
+
+    void passOk();
+
+    bool isRegistered() const;
+
 };

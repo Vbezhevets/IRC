@@ -2,12 +2,22 @@
 #include "Irc.hpp"
 #include <cstdlib>
 #include <future>
+#include <stdexcept>
 #include <string>
+#include <sys/poll.h>
+#include <sys/socket.h>
 
 extern volatile sig_atomic_t g_running;
 
 Server::Server(int port, const std::string& p)
     : _listen_fd(-1), _port(port), _pass(p) {
+}
+pollfd newPfd(int fd) {
+    pollfd pfd;
+    pfd.fd = fd;
+    pfd.events = POLLIN;
+    pfd.revents = 0;
+   return pfd;
 }
 
 void Server::init() {
@@ -36,12 +46,9 @@ void Server::init() {
     if (fcntl(_listen_fd, F_SETFL, fl | O_NONBLOCK) == -1)
         throw std::runtime_error("fcntl F_SETFL O_NONBLOCK listen");
 
-    pollfd pfd; 
-    pfd.fd = _listen_fd;
-    pfd.events = POLLIN;
-    pfd.revents = 0;
-    _pfds.push_back(pfd);
+    _pfds.push_back(newPfd(_listen_fd));
     IRC::initHandlers();
+
 }
 
 void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
@@ -66,14 +73,13 @@ void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
             close(client_fd);
             continue;
         }
+        char ipbuf[INET_ADDRSTRLEN] = {0};
+        if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == nullptr)
+            throw std::runtime_error("failed to get client's adress");
+        std::string hostStr(ipbuf);
+       _clients.insert(std::make_pair(client_fd, Client(client_fd, hostStr)));
 
-        _clients.insert(std::make_pair(client_fd, Client(client_fd)));
-
-        pollfd pfd;
-        pfd.fd = client_fd;
-        pfd.events = POLLIN;
-        pfd.revents = 0;
-        toAdd.push_back(pfd);
+        toAdd.push_back(newPfd(client_fd));
     }
 }
 
@@ -100,14 +106,11 @@ bool Server::handleRead(int fd) {
     while (true) {
         ssize_t n = recv(fd, buff, sizeof(buff), 0);
         if (n > 0) {
-            _clients[fd].appendInBuff(buff, static_cast<std::size_t>(n));
+            client.appendInBuff(buff, static_cast<std::size_t>(n));
             std::string msg;
 
-            while (IRC::extractOneMessage(client.getInBuff(), msg)) { // we clean bufer inside if needed (full mess recieved)
-                std::string resp = IRC::handleMessage(*this, client, msg);
-                if (!resp.empty())
-                    client.addToOutBuff(resp);
-            }
+            while (IRC::extractOneMessage(client.getInBuff(), msg)) 
+                IRC::handleMessage(*this, client, msg);
 
             if (client.wantsWrite())
                 setEvents(fd, POLLIN | POLLOUT);
@@ -230,7 +233,11 @@ void Server::tick(std::vector<int>& toDrop) {
         }
     }
 
+    
 }   
+const std::string& Server::getPassword() {
+    return _pass;
+}
 
 /*
 	•	POLLERR → ошибка на дескрипторе.

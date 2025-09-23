@@ -1,5 +1,8 @@
 
 #include "Irc.hpp"
+#include "Client.hpp"
+#include "Server.hpp"
+
 
 #include <string>
 #include <vector>
@@ -26,21 +29,64 @@ void IRC::initHandlers() {
     handlers["PRIVMSG"] = &handlePRIVMSG;
     handlers["JOIN"]    = &handleJOIN;
     handlers["PART"]    = &handlePART;
-    handlers["TICK"]    = &handlePONG;
+    handlers["PONG"]    = &handlePONG;
 
 }
 
+static inline char toupper_char(unsigned char c) {
+    switch (c) {
+        case '{': return '[';
+        case '}': return ']';
+        case '|': return '\\';
+        case '~': return '^';
+        default:  return (char)std::toupper(c);
+    }
+}
+static inline void upper(std::string &s) {
+    for (std::size_t i = 0; i < s.size(); ++i)
+        s[i] = toupper_char((unsigned char)s[i]);
+}
 
-std::string  IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
+void IRC::initNumAnsers() {
+    numAnswers[421]    = "Unkonown command";
+    
+             /* all will be here*/
+    
+    numAnswers[461] = "Not enough parameters";
+    numAnswers[462] = "You may not reregister";
+    numAnswers[464] = "Password incorrect";   
+}
+
+
+void sendNum(int n, Client& client, std::string cmd = "", const std::string& trailing = "") {
+    char codeBuf[4];
+    std::snprintf(codeBuf, sizeof(codeBuf), "%03d", n);
+
+    std::string text = IRC::numAnswers.count(n) ? IRC::numAnswers[n] : trailing;
+
+    std::string reply = std::string(":") + SERVERNAME + " " + std::string(codeBuf) + " " + client.getNick();
+
+    if (!cmd.empty())
+        reply += " " + cmd;
+
+    if (!text.empty())
+        reply += " :" + text;
+
+    reply += "\r\n";
+
+    client.addToOutBuff(reply);
+}
+
+void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     command tempCmd = parseLine(msg);
-    std::string reply = ":server 421 * :Unknown command\r\n";
-    if (tempCmd.cmd.empty())
-        return reply;
-
+    if (tempCmd.cmd.empty()) {
+        sendNum(421,client, ""); return;
+    }
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())
-        reply = it->second(s, client, tempCmd); 
-    return reply;
+        it->second(s, client, tempCmd);
+    else 
+        sendNum(421,client, tempCmd.cmd, "");
 };
 
 
@@ -69,6 +115,7 @@ IRC::command IRC:: parseLine( std::string s) {
     const char *cmdStart = p;
     while (p < end && *p != ' ') ++p;
     out.cmd = std::string(cmdStart, p - cmdStart);
+    upper(out.cmd);
 
     for (size_t i = 0; i < out.cmd.size(); ++i)
         out.cmd[i] = (char)std::toupper((unsigned char)out.cmd[i]);

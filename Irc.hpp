@@ -19,16 +19,20 @@ class IRC {
             std::string trailing;
         };
 
+        
         //handlers for commands:
         typedef std::string (*handler)(Server& , Client&, command& ) ;
         
         static std::map <std::string, handler> handlers ;
+        static std::map <int , std::string> numAnswers;
         
         static void initHandlers();
+        void initNumAnsers();
         
         static bool extractOneMessage(std::string& buff, std::string& msg) ;
-        static std::string handleMessage(Server& s, Client& cleint, const std::string& msg) ;
+        static void handleMessage(Server& s, Client& cleint, const std::string& msg) ;
         static command  parseLine(std::string line);
+        static void sendNum(int n, Client&, std::string cmd = "", const std::string& trailing = "");
         
         static std::string handlePASS(Server&, Client&, command&);
         static std::string handleNICK(Server&, Client&, command&);

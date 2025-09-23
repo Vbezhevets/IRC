@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #include "Client.hpp"
 
+#define SERVERNAME "👾";
 class Server {
 private:
     int _listen_fd;
@@ -37,9 +38,12 @@ public:
 
     typedef std::map<int, Client> ::iterator clIter; // :DDDDD
     Server(int port, const std::string& p);
+        
+
 
     void init();
     void run();
     void tick(std::vector<int>& toDrop);
+    const std::string& getPassword();
 
 };
