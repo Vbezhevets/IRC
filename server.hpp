@@ -17,7 +17,7 @@
 #include <sys/socket.h>
 #include "Client.hpp"
 
-#define SERVERNAME "👾";
+#define SERVERNAME "👾"
 class Server {
 private:
     int _listen_fd;

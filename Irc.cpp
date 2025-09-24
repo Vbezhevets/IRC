@@ -9,7 +9,7 @@
 #include <cctype>
 
 std::map<std::string, IRC::handler> IRC::handlers;
-
+std::map<int, std::string> IRC::numAnswers;
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     std::size_t pos = buff.find("\r\n");
     if (pos != std::string::npos) {
@@ -33,22 +33,15 @@ void IRC::initHandlers() {
 
 }
 
-static inline char toupper_char(unsigned char c) {
-    switch (c) {
-        case '{': return '[';
-        case '}': return ']';
-        case '|': return '\\';
-        case '~': return '^';
-        default:  return (char)std::toupper(c);
-    }
-}
+
 static inline void upper(std::string &s) {
     for (std::size_t i = 0; i < s.size(); ++i)
-        s[i] = toupper_char((unsigned char)s[i]);
+        s[i] = toupper(s[i]);
 }
 
-void IRC::initNumAnsers() {
+void IRC::initNumAnswers() {
     numAnswers[421]    = "Unkonown command";
+    numAnswers[409]    = "No origin specified";
     
              /* all will be here*/
     
@@ -57,12 +50,15 @@ void IRC::initNumAnsers() {
     numAnswers[464] = "Password incorrect";   
 }
 
-
-void sendNum(int n, Client& client, std::string cmd = "", const std::string& trailing = "") {
+// void sendText() {}
+void IRC:: sendFromServ(Client& client, const std::string& message ){
+    client.addToOutBuff(std::string(":") + SERVERNAME + " " + message + "\r\n");
+}
+void IRC:: sendNum(int n, Client& client, std::string cmd , const std::string& trailing ) {
     char codeBuf[4];
     std::snprintf(codeBuf, sizeof(codeBuf), "%03d", n);
 
-    std::string text = IRC::numAnswers.count(n) ? IRC::numAnswers[n] : trailing;
+    std::string text = IRC::numAnswers.count(n) ? IRC::numAnswers[n] : trailing; // trailing give possibility to send here our own specific message
 
     std::string reply = std::string(":") + SERVERNAME + " " + std::string(codeBuf) + " " + client.getNick();
 
@@ -78,6 +74,8 @@ void sendNum(int n, Client& client, std::string cmd = "", const std::string& tra
 }
 
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
+    client.updateActive();
+
     command tempCmd = parseLine(msg);
     if (tempCmd.cmd.empty()) {
         sendNum(421,client, ""); return;

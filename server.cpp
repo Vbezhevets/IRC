@@ -48,6 +48,7 @@ void Server::init() {
 
     _pfds.push_back(newPfd(_listen_fd));
     IRC::initHandlers();
+    IRC::initNumAnswers();
 
 }
 
@@ -223,12 +224,12 @@ void Server::tick(std::vector<int>& toDrop) {
     for (clIter it = _clients.begin(); it != _clients.end(); ++it ){
         Client& client = it->second;
 
-        if (!client.isAwaitingPong() && now - client.lastActive() > 12 ) {
+        if (!client.isAwaitingPong() && now - client.lastActive() > 120 ) {
             client.setAwaitingPong(true);
             client.addToOutBuff("PING :tick\r\n");
             setEvents(client.getFd(), POLLIN | POLLOUT);
         }
-        else if (client.isAwaitingPong() && now - client.lastActive() > 15){
+        else if (client.isAwaitingPong() && now - client.lastActive() > 150){
             toDrop.push_back(client.getFd());
         }
     }

@@ -2,6 +2,7 @@
 #include <exception>
 #include <sstream>
 #include <stdexcept>
+#include <iostream>
 
 volatile sig_atomic_t g_running = 1;
 

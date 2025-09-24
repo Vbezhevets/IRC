@@ -7,7 +7,7 @@ CXX      := c++
 CXXFLAGS :=  -std=c++98 -Wall -Wextra -Werror 
 
 # ---- Files ----
-SRCS := main.cpp server.cpp Irc.cpp handlers.cpp 
+SRCS := main.cpp server.cpp Irc.cpp handlers.cpp Client.cpp
 OBJS := $(SRCS:.cpp=.o)
 DEPS := $(OBJS:.o=.d)
 

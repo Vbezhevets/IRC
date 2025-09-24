@@ -21,26 +21,27 @@ class IRC {
 
         
         //handlers for commands:
-        typedef std::string (*handler)(Server& , Client&, command& ) ;
+        typedef void (*handler)(Server& , Client&, command& ) ;
         
         static std::map <std::string, handler> handlers ;
         static std::map <int , std::string> numAnswers;
         
         static void initHandlers();
-        void initNumAnsers();
+        static void initNumAnswers();
         
         static bool extractOneMessage(std::string& buff, std::string& msg) ;
         static void handleMessage(Server& s, Client& cleint, const std::string& msg) ;
         static command  parseLine(std::string line);
         static void sendNum(int n, Client&, std::string cmd = "", const std::string& trailing = "");
-        
-        static std::string handlePASS(Server&, Client&, command&);
-        static std::string handleNICK(Server&, Client&, command&);
-        static std::string handleUSER(Server&, Client&, command&);
-        static std::string handlePING(Server&, Client&, command&);
-        static std::string handlePRIVMSG(Server&, Client&, command&);
-        static std::string handleJOIN(Server&, Client&, command&);
-        static std::string handlePART(Server&, Client&, command&);
-        static std::string handlePONG(Server&, Client&, command&);
+        static void sendFromServ(Client& , const std::string&  );
+
+        static void handlePASS(Server&, Client&, command&);
+        static void handleNICK(Server&, Client&, command&);
+        static void handleUSER(Server&, Client&, command&);
+        static void handlePING(Server&, Client&, command&);
+        static void handlePRIVMSG(Server&, Client&, command&);
+        static void handleJOIN(Server&, Client&, command&);
+        static void handlePART(Server&, Client&, command&);
+        static void handlePONG(Server&, Client&, command&);
         
     };

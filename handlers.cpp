@@ -2,57 +2,55 @@
 #include "Server.hpp"
 #include "Client.hpp"
 
-void handlePASS(Server& S, Client& client, const IRC::command& cmd) {
-    if (client.isRegistered()){ 
+void IRC::  handlePASS(Server& S, Client& client,  IRC::command& cmd) {
+    if (client.isRegistered())
         IRC::sendNum(462, client); 
-        return; 
-    }
-    if (cmd.params.empty() && cmd.trailing.empty()) {
+ 
+    else if (cmd.params.empty() && cmd.trailing.empty()) 
         IRC::sendNum(461, client); 
-        return;
-    }
 
-    if (cmd.params[0] != S.getPassword()) {
+    else if (!cmd.params.empty() && cmd.params[0] != S.getPassword()) 
         IRC::sendNum(464, client);
-        return;
-    }
 
-    client.passOk();
+    else
+        client.passOk();
 }
 
-std::string IRC:: handleNICK(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; return "";
+void IRC::  handleNICK(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)client; (void)cmd;
 };
 
-std::string IRC:: handleUSER(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; return "";
+void IRC::  handleUSER(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)client; (void)cmd; 
 };
 
-std::string IRC:: handlePING(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client;
-    if (!cmd.params.empty())
-        return "PONG :" + cmd.params[0] + "\r\n";
-    if (!cmd.trailing.empty())
-        return "PONG :" + cmd.trailing + "\r\n";
-    return "";
+void IRC::  handlePING(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; 
+    client.updateActive();
+    if (cmd.params.empty() && cmd.trailing.empty())
+        IRC::sendNum(409, client);
+    else {
+    std::string tok =  cmd.params.empty() ? cmd.trailing : cmd.params[0];
+    IRC::  sendFromServ(client, std::string("PONG" )  +  SERVERNAME + " :" + tok );
+    }
 };
   
 
-std::string IRC:: handlePONG(Server& S, Client& client,  IRC::command& cmd){
+void IRC::  handlePONG(Server& S, Client& client,  IRC::command& cmd){
     (void)S; (void)cmd;
     client.updateActive();
     client.setAwaitingPong(false);
-    return "";
+    
 };
 
-std::string IRC:: handlePRIVMSG(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; return "";
+void IRC::  handlePRIVMSG(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)client; (void)cmd; 
 };
 
-std::string IRC:: handleJOIN(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; return "";
+void IRC::  handleJOIN(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)client; (void)cmd; 
 };
 
-std::string IRC:: handlePART(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; return "";
+void IRC::  handlePART(Server& S, Client& client,  IRC::command& cmd){
+    (void)S; (void)client; (void)cmd; 
 };  

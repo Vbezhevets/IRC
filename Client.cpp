@@ -5,9 +5,8 @@
 
 Client::Client() {};
 
-Client::Client(int fd, std::string host)
-: _fd(fd),  _passOk(false),  _hasNick(false), _nick("*"),  _hasUser(false), _host(host),
-  _isRegistered(false), _last_active(std::time(NULL)), _awaitingPong(false) {}
+Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
+  _isRegistered(false),   _last_active(std::time(NULL)), _awaitingPong(false) {}
 
   Client::~Client() {};
 
