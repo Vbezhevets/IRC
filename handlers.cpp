@@ -4,13 +4,13 @@
 
 void IRC::  handlePASS(Server& S, Client& client,  IRC::command& cmd) {
     if (client.isRegistered())
-        IRC::sendNum(462, client); 
+        S.sendToClient(client, IRC::makeNumString(462, client));
  
     else if (cmd.params.empty() && cmd.trailing.empty()) 
-        IRC::sendNum(461, client); 
+        S.sendToClient(client, IRC::makeNumString(461, client)); 
 
     else if (!cmd.params.empty() && cmd.params[0] != S.getPassword()) 
-        IRC::sendNum(464, client);
+        S.sendToClient(client, IRC::makeNumString(464, client));
 
     else
         client.passOk();
@@ -28,10 +28,10 @@ void IRC::  handlePING(Server& S, Client& client,  IRC::command& cmd){
     (void)S; 
     client.updateActive();
     if (cmd.params.empty() && cmd.trailing.empty())
-        IRC::sendNum(409, client);
+        S.sendToClient(client, IRC::makeNumString(409, client));
     else {
-    std::string tok =  cmd.params.empty() ? cmd.trailing : cmd.params[0];
-    IRC::  sendFromServ(client, std::string("PONG" )  +  SERVERNAME + " :" + tok );
+        std::string tok =  cmd.params.empty() ? cmd.trailing : cmd.params[0];
+        S.sendToClient(client, IRC::  makeStringFromServ(std::string("PONG" )  +  SERVERNAME + " :" + tok ));
     }
 };
   

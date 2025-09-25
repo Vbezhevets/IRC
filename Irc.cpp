@@ -50,11 +50,11 @@ void IRC::initNumAnswers() {
     numAnswers[464] = "Password incorrect";   
 }
 
-// void sendText() {}
-void IRC:: sendFromServ(Client& client, const std::string& message ){
-    client.addToOutBuff(std::string(":") + SERVERNAME + " " + message + "\r\n");
+
+std::string  IRC:: makeStringFromServ(const std::string& message ){
+ return (std::string(":") + SERVERNAME + " " + message + "\r\n");
 }
-void IRC:: sendNum(int n, Client& client, std::string cmd , const std::string& trailing ) {
+std::string IRC:: makeNumString(int n, Client& client, std::string cmd , const std::string& trailing ) {
     char codeBuf[4];
     std::snprintf(codeBuf, sizeof(codeBuf), "%03d", n);
 
@@ -67,10 +67,9 @@ void IRC:: sendNum(int n, Client& client, std::string cmd , const std::string& t
 
     if (!text.empty())
         reply += " :" + text;
+    reply += "\r\n"; 
 
-    reply += "\r\n";
-
-    client.addToOutBuff(reply);
+    return reply;
 }
 
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
@@ -78,13 +77,13 @@ void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
 
     command tempCmd = parseLine(msg);
     if (tempCmd.cmd.empty()) {
-        sendNum(421,client, ""); return;
+       s.sendToClient(client, IRC::makeNumString(421,client, "")); return;
     }
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())
         it->second(s, client, tempCmd);
     else 
-        sendNum(421,client, tempCmd.cmd, "");
+        s.sendToClient(client, IRC::makeNumString(421,client, tempCmd.cmd));
 };
 
 

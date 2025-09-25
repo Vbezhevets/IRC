@@ -240,6 +240,10 @@ const std::string& Server::getPassword() {
     return _pass;
 }
 
+void Server::sendToClient(Client& client, const std::string& line) {
+    client.addToOutBuff(line);
+    setEvents(client.getFd(), POLLIN | POLLOUT);
+}
 /*
 	•	POLLERR → ошибка на дескрипторе.
 	•	POLLHUP → разрыв соединения (закрыт другой стороной).

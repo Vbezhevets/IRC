@@ -32,9 +32,10 @@ class IRC {
         static bool extractOneMessage(std::string& buff, std::string& msg) ;
         static void handleMessage(Server& s, Client& cleint, const std::string& msg) ;
         static command  parseLine(std::string line);
-        static void sendNum(int n, Client&, std::string cmd = "", const std::string& trailing = "");
-        static void sendFromServ(Client& , const std::string&  );
 
+        static std::string makeNumString(int n, Client& client, std::string cmd = "", const std::string& trailing = "" );
+        static std::string makeStringFromServ( const std::string& message);
+        
         static void handlePASS(Server&, Client&, command&);
         static void handleNICK(Server&, Client&, command&);
         static void handleUSER(Server&, Client&, command&);

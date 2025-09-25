@@ -40,7 +40,7 @@ public:
     Server(int port, const std::string& p);
         
 
-
+    void sendToClient(Client& client, const std::string& line);
     void init();
     void run();
     void tick(std::vector<int>& toDrop);

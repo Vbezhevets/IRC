@@ -6,7 +6,7 @@
 class Client {
 private:
     int         _fd;
-    std::string _in_buff;
+    std::string _in_buff; //recieved from client to Serv
     std::string _out_buff_for_client; // server writes to client here
 
     std::string _nick;
