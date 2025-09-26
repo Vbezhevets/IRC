@@ -5,7 +5,7 @@
 
 Client::Client() {};
 
-Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
+Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _user("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
   _isRegistered(false),   _last_active(std::time(NULL)), _awaitingPong(false) {}
 
   Client::~Client() {};
@@ -57,7 +57,7 @@ int Client::getFd() const {
 }
 
  
-void Client::setNick(const std::string& nick) {
+void Client::applyNick(const std::string& nick) {
     _nick = nick;
     _hasNick = true;
     tryMakeRegistered();
@@ -95,3 +95,8 @@ void Client::passOk() {
 bool Client::isRegistered() const {
     return _isRegistered;
 }
+
+std::string Client::getMask() const{
+    return  _nick + "!" + _user + "@" + _host;
+}
+ 

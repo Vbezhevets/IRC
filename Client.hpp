@@ -23,24 +23,23 @@ private:
     std::time_t _last_active;
     bool        _awaitingPong;
 
- 
-    // bool readyForRegistration() const; 
-    void tryMakeRegistered();    
-
-public:
+    
+    public:
     Client();
     Client(int fd, std::string host);
     ~Client();
-
-
+    
+    
     void appendInBuff(const char* data, std::size_t n);
     std::string& getInBuff();
     std::string& getOutBuff();
     void addToOutBuff(const std::string& s);
     bool wantsWrite() const;
-
+    
     std::time_t lastActive() const;
     void updateActive();
+    
+    void tryMakeRegistered();    
 
     bool isAwaitingPong() const;
     void setAwaitingPong(bool b);
@@ -48,7 +47,7 @@ public:
     int getFd() const;
 
 
-    void setNick(const std::string& nick);
+
     const std::string& getNick() const;
 
     void setUser(const std::string& user, const std::string& realname);
@@ -57,7 +56,8 @@ public:
     const std::string& getHost() const;
 
     void passOk();
+    void applyNick(const std::string& nick);
 
     bool isRegistered() const;
-
+    std::string getMask() const ;
 };

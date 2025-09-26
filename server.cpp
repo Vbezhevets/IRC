@@ -244,10 +244,15 @@ void Server::sendToClient(Client& client, const std::string& line) {
     client.addToOutBuff(line);
     setEvents(client.getFd(), POLLIN | POLLOUT);
 }
-/*
-	•	POLLERR → ошибка на дескрипторе.
-	•	POLLHUP → разрыв соединения (закрыт другой стороной).
-	•	POLLNVAL → неверный дескриптор (обычно баг в программе).
-        EINTR
-⸻
-*/
+
+
+int Server::setNick(Client& client, std::string nick  ){
+        for (clIter it = _clients.begin(); it != _clients.end(); it++){
+            if (it->second.getFd() != client.getFd() && it->second.getNick() == nick)
+            return 433;
+        }
+        client.applyNick(nick);   
+    return 0;
+}
+
+

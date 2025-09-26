@@ -10,17 +10,21 @@
 
 std::map<std::string, IRC::handler> IRC::handlers;
 std::map<int, std::string> IRC::numAnswers;
-bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
-    std::size_t pos = buff.find("\r\n");
-    if (pos != std::string::npos) {
-        msg = buff.substr(0, pos);
-        buff.erase(0, pos + 2);
-        return true;
-    } else 
-        return false;
+
+void IRC::initNumAnswers() {
+    numAnswers[409]    = "No origin specified";
+    numAnswers[421]    = "Unkonown command";
+    numAnswers[433]    = "Nickname is already in use";
+
     
+             /* all will be here*/
     
+    numAnswers[461] = "Not enough parameters";
+    numAnswers[462] = "You may not reregister";
+    numAnswers[464] = "Password incorrect";   
 }
+
+
 void IRC::initHandlers() {
     handlers["PASS"]    = &handlePASS;
     handlers["NICK"]    = &handleNICK;
@@ -34,21 +38,22 @@ void IRC::initHandlers() {
 }
 
 
+bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
+    std::size_t pos = buff.find("\r\n");
+    if (pos != std::string::npos) {
+        msg = buff.substr(0, pos);
+        buff.erase(0, pos + 2);
+        return true;
+    } else 
+        return false;
+    
+    
+}
 static inline void upper(std::string &s) {
     for (std::size_t i = 0; i < s.size(); ++i)
         s[i] = toupper(s[i]);
 }
 
-void IRC::initNumAnswers() {
-    numAnswers[421]    = "Unkonown command";
-    numAnswers[409]    = "No origin specified";
-    
-             /* all will be here*/
-    
-    numAnswers[461] = "Not enough parameters";
-    numAnswers[462] = "You may not reregister";
-    numAnswers[464] = "Password incorrect";   
-}
 
 
 std::string  IRC:: makeStringFromServ(const std::string& message ){
