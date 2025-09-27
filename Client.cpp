@@ -6,12 +6,15 @@
 Client::Client() {};
 
 Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _user("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
-  _isRegistered(false),   _last_active(std::time(NULL)), _awaitingPong(false) {}
+  _isRegistered(false), _isWelcomed(false),  _last_active(std::time(NULL)), _awaitingPong(false) {}
 
   Client::~Client() {};
 
   void Client::tryMakeRegistered() {
-    if (_passOk && _hasNick && _hasUser && !_isRegistered) _isRegistered = true; 
+    if (_passOk && _hasNick && _hasUser && !_isRegistered) {
+        _isRegistered = true;
+    }
+    
 }
 
 void Client::appendInBuff(const char* data, std::size_t n) {
@@ -100,3 +103,10 @@ std::string Client::getMask() const{
     return  _nick + "!" + _user + "@" + _host;
 }
  
+bool Client::isWelcomed() const {
+    return _isWelcomed;
+}
+ 
+void Client::setWelcomed()  {
+     _isWelcomed = true;
+}

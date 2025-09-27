@@ -255,4 +255,12 @@ int Server::setNick(Client& client, std::string nick  ){
     return 0;
 }
 
+ 
 
+void Server:: tryRegister(Client& client) {
+     client.tryMakeRegistered();
+     if (client.isRegistered() && !client.isWelcomed()) {
+         sendToClient(client, IRC::makeStringFromServ("001 " + client.getNick() + " :Welcome to the IRC server, " + client.getNick()));
+         client.setWelcomed();
+     }
+};

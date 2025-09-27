@@ -17,7 +17,7 @@ void IRC::initNumAnswers() {
     numAnswers[433]    = "Nickname is already in use";
 
     
-             /* all will be here*/
+             /* all errors will be here*/
     
     numAnswers[461] = "Not enough parameters";
     numAnswers[462] = "You may not reregister";

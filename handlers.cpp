@@ -22,7 +22,7 @@ void IRC::  handlePASS(Server& S, Client& client,  IRC::command& cmd) {
 
     else {
         client.passOk(); 
-        client.tryMakeRegistered();
+         S.tryRegister(client);;
     }
 
 }
@@ -35,9 +35,8 @@ void IRC::  handleNICK(Server& S, Client& client,  IRC::command& cmd){
         S.sendToClient(client, IRC::makeNumString(433, client, nick));
         return;
     }
-    if (!client.isRegistered()) 
-        client.tryMakeRegistered();
-    
+    if (!client.isRegistered())
+        S.tryRegister(client);
     else {
         std::string oldMask = client.getMask();
         std::string msg = ":" + oldMask + " NICK :" + nick + "\r\n";
@@ -54,10 +53,10 @@ void IRC::  handleUSER(Server& S, Client& client,  IRC::command& cmd){
     }
     if (cmd.params.size() < 3 || cmd.trailing.empty()) {
         S.sendToClient(client, IRC::makeNumString(461, client, "USER")); 
-        
+        return;
     }
     client.setUser(cmd.params[0], cmd.trailing);
-    client.tryMakeRegistered();
+     S.tryRegister(client);
 
 };
 

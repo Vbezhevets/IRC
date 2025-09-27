@@ -45,6 +45,8 @@ public:
     void run();
     void tick(std::vector<int>& toDrop);
     const std::string& getPassword();
-
+    
     int setNick(Client& client, std::string nick  );
+    void tryRegister(Client&);
+    
 };

@@ -18,6 +18,8 @@ private:
     bool        _hasNick; 
     bool        _hasUser; 
     bool        _isRegistered; 
+    bool        _isWelcomed; 
+
  
 
     std::time_t _last_active;
@@ -59,5 +61,8 @@ private:
     void applyNick(const std::string& nick);
 
     bool isRegistered() const;
+    bool isWelcomed() const;
+    void setWelcomed();
+
     std::string getMask() const ;
 };
