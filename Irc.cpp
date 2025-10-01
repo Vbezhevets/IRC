@@ -12,8 +12,12 @@ std::map<std::string, IRC::handler> IRC::handlers;
 std::map<int, std::string> IRC::numAnswers;
 
 void IRC::initNumAnswers() {
+    numAnswers[401]    = "No such nick/channel";
     numAnswers[409]    = "No origin specified";
-    numAnswers[421]    = "Unkonown command";
+    numAnswers[411]    = "No recipient given";
+    numAnswers[412]    = "No text to send";
+
+    numAnswers[421]    = "Unknown command";
     numAnswers[433]    = "Nickname is already in use";
 
     

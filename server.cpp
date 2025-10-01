@@ -1,4 +1,5 @@
 #include "Server.hpp"
+#include "Client.hpp"
 #include "Irc.hpp"
 #include <cstdlib>
 #include <future>
@@ -240,9 +241,9 @@ const std::string& Server::getPassword() {
     return _pass;
 }
 
-void Server::sendToClient(Client& client, const std::string& line) {
+void Server::sendToClient(Client& client, const std::string& line) { 
     client.addToOutBuff(line);
-    setEvents(client.getFd(), POLLIN | POLLOUT);
+    setEvents(client.getFd(), POLLIN | POLLOUT); 
 }
 
 
@@ -255,7 +256,12 @@ int Server::setNick(Client& client, std::string nick  ){
     return 0;
 }
 
- 
+Client* Server:: getClientByNick(const std::string& nick){
+    for (clIter it = _clients.begin(); it != _clients.end(); it++)
+        if (it->second.getNick() ==   nick)
+            return &it->second;
+    return NULL;
+}
 
 void Server:: tryRegister(Client& client) {
      client.tryMakeRegistered();

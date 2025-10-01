@@ -48,5 +48,6 @@ public:
     
     int setNick(Client& client, std::string nick  );
     void tryRegister(Client&);
+    Client* getClientByNick(const std::string& nick);
     
 };

@@ -4,13 +4,21 @@
 #include <random>
 #include <streambuf>
 
-int checkNoCommand(Server& S, Client& client,  IRC::command& cmd, int errNum){
+bool checkNoCommand(Server& S, Client& client,  IRC::command& cmd, int errNum){
     if (cmd.params.empty() && cmd.trailing.empty())  {
         S.sendToClient(client, IRC::makeNumString(errNum, client));
         return true;
     }
     return false;
 }
+
+
+// bool checkNoCommand(Server& S, Client& client,  IRC::command& cmd, int errNum){
+//     if (cmd.params.empty()) {S.sendToClient(client, IRC::makeNumString(411, client)); return true;}
+//     if (cmd.trailing.empty()) {S.sendToClient(client, IRC::makeNumString(412, client)); return true;}
+//     return false;
+// }
+
 void IRC::  handlePASS(Server& S, Client& client,  IRC::command& cmd) {
     if (client.isRegistered())
         S.sendToClient(client, IRC::makeNumString(462, client));
@@ -46,7 +54,7 @@ void IRC::  handleNICK(Server& S, Client& client,  IRC::command& cmd){
 };
 
 void IRC::  handleUSER(Server& S, Client& client,  IRC::command& cmd){
-    if (checkNoCommand(S, client, cmd, 431)) return;
+    if (checkNoCommand(S, client, cmd, 461)) return;
     if (client.isRegistered()) {
          S.sendToClient(client, IRC::makeNumString(462, client));
         return;
@@ -68,7 +76,7 @@ void IRC::  handlePING(Server& S, Client& client,  IRC::command& cmd){
         S.sendToClient(client, IRC::makeNumString(409, client));
     else {
         std::string tok =  cmd.params.empty() ? cmd.trailing : cmd.params[0];
-        S.sendToClient(client, IRC::  makeStringFromServ(std::string("PONG" )  +  SERVERNAME + " :" + tok ));
+        S.sendToClient(client, IRC::  makeStringFromServ(std::string("PONG " )  +  SERVERNAME + " :" + tok ));
     }
 };
   
@@ -81,7 +89,19 @@ void IRC::  handlePONG(Server& S, Client& client,  IRC::command& cmd){
 };
 
 void IRC::  handlePRIVMSG(Server& S, Client& client,  IRC::command& cmd){
-    (void)S; (void)client; (void)cmd; 
+       if (cmd.params.empty())  {
+            S.sendToClient(client, IRC::makeNumString(411, client)); return;
+       }
+       if (cmd.trailing.empty())  {
+           S.sendToClient(client, IRC::makeNumString(412, client)); return;
+      }
+      Client *reciept = S.getClientByNick(cmd.params[0]);
+      if (!reciept) {
+           S.sendToClient(client, IRC::makeNumString(401, client, cmd.params[0])); return;
+      }
+      S.sendToClient(*reciept,
+                ":" + client.getMask() + " PRIVMSG " + reciept->getNick() + " :" + cmd.trailing + "\r\n");
+
 };
 
 void IRC::  handleJOIN(Server& S, Client& client,  IRC::command& cmd){
