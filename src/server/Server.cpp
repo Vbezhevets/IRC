@@ -1,27 +1,33 @@
-#include "Server.hpp"
-#include "Client.hpp"
-#include "Irc.hpp"
 #include <cstdlib>
-#include <future>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <sys/poll.h>
 #include <sys/socket.h>
+#include <cstddef>
+#include <iostream>
+
+#include "Server.hpp"
+#include "../utils/utils.hpp"
 
 extern volatile sig_atomic_t g_running;
 
 Server::Server(int port, const std::string& p)
     : _listen_fd(-1), _port(port), _pass(p) {
 }
+
 pollfd newPfd(int fd) {
     pollfd pfd;
     pfd.fd = fd;
     pfd.events = POLLIN;
     pfd.revents = 0;
-   return pfd;
+    return pfd;
 }
 
 void Server::init() {
+
+    LOG_INFO << "Starting Irc Server" << std::endl;
+
     _listen_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (_listen_fd < 0)
         throw std::runtime_error("listening socket creation error");
@@ -38,8 +44,10 @@ void Server::init() {
     if (bind(_listen_fd, reinterpret_cast<sockaddr*>(&_serv_addr), sizeof(_serv_addr)) < 0)
         throw std::runtime_error("bind error");
 
-    if (listen(_listen_fd, 100) < 0)
+    if (listen(_listen_fd, CONNECTION_QUEUE_SIZE) < 0)
         throw std::runtime_error("listen error");
+
+    LOG_DEBUG << "Listening on " << _serv_addr.sin_addr.s_addr << std::endl;
 
     int fl = fcntl(_listen_fd, F_GETFL, 0);
     if (fl == -1)
@@ -50,7 +58,78 @@ void Server::init() {
     _pfds.push_back(newPfd(_listen_fd));
     IRC::initHandlers();
     IRC::initNumAnswers();
+}
 
+void Server::run() {
+    std::vector<pollfd> toAdd;
+    std::vector<int> toDrop;
+
+    LOG_INFO << "Running..." << std::endl;
+    while (g_running) {
+        if (_pfds.empty())
+            break;
+
+        int r = poll(&_pfds[0], _pfds.size(), POLL_TIMEOUT);
+        if (r < 0) {
+            if (errno == EINTR) //прерван repeat
+                continue;
+            throw std::runtime_error("poll error");
+        }
+
+        for (std::size_t i = 0; i < _pfds.size(); ++i) {
+            if (_pfds[i].revents == 0)
+                continue;
+
+            if (_pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) { // disconnected
+                toDrop.push_back(_pfds[i].fd);
+                continue;
+            }
+
+            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) {
+                acceptNewClients(toAdd);
+                continue;
+            }
+
+            if (_pfds[i].revents & POLLIN) {
+                if (!handleRead(_pfds[i].fd)) {
+                    toDrop.push_back(_pfds[i].fd);
+                    continue;
+                }
+            }
+
+            if (_pfds[i].revents & POLLOUT) {
+                if (!handleWrite(_pfds[i].fd)) {
+                    toDrop.push_back(_pfds[i].fd);
+                    continue;
+                }
+            }
+        }
+        tick(toDrop); //checking existing for hanging
+        if (!toDrop.empty()) {
+
+            for (std::vector<int>::iterator it = toDrop.begin(); it != toDrop.end(); ++it) {
+                LOG_INFO << "Dropping client " << *it << std::endl;
+                close(*it);
+                _clients.erase(*it);
+
+                for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); ) {
+                    if (pit->fd == *it)
+                        pit = _pfds.erase(pit);
+                    else
+                        ++pit; //
+                }
+            }
+            toDrop.clear();
+        }
+
+        if (!toAdd.empty()) {
+            for (std::vector<pollfd>::iterator it = toAdd.begin(); it != toAdd.end(); ++it) {
+                LOG_INFO << "Adding Client " << it->fd << std::endl;
+            }
+            _pfds.insert(_pfds.end(), toAdd.begin(), toAdd.end());
+            toAdd.clear();
+        }
+    }
 }
 
 void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
@@ -76,10 +155,12 @@ void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
             continue;
         }
         char ipbuf[INET_ADDRSTRLEN] = {0};
-        if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == nullptr)
+        // This didnt compile for me
+        // if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == nullptr)
+        if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == NULL)
             throw std::runtime_error("failed to get client's adress");
         std::string hostStr(ipbuf);
-       _clients.insert(std::make_pair(client_fd, Client(client_fd, hostStr)));
+        _clients.insert(std::make_pair(client_fd, Client(client_fd, hostStr)));
 
         toAdd.push_back(newPfd(client_fd));
     }
@@ -103,7 +184,7 @@ Client& Server::getClient(int fd) {
 
 bool Server::handleRead(int fd) {
     Client& client = getClient(fd);
-    char buff[1024];
+    char buff[READ_BUF_SIZE];
 
     while (true) {
         ssize_t n = recv(fd, buff, sizeof(buff), 0);
@@ -111,7 +192,7 @@ bool Server::handleRead(int fd) {
             client.appendInBuff(buff, static_cast<std::size_t>(n));
             std::string msg;
 
-            while (IRC::extractOneMessage(client.getInBuff(), msg)) 
+            while (IRC::extractOneMessage(client.getInBuff(), msg))
                 IRC::handleMessage(*this, client, msg);
 
             if (client.wantsWrite())
@@ -145,7 +226,6 @@ bool Server::handleWrite(int fd) {
         }
         if (n == 0)
             return true;
-
         if (errno == EAGAIN || errno == EWOULDBLOCK)
             return true;
         if (errno == EINTR) //прерван repeat
@@ -157,69 +237,6 @@ bool Server::handleWrite(int fd) {
     return true;
 }
 
-void Server::run() {
-    while (g_running) {
-        if (_pfds.empty())
-            break;
-
-        std::vector<pollfd> toAdd;
-        std::vector<int> toDrop;
-        int r = poll(&_pfds[0], _pfds.size(), 200);
-        if (r < 0) {
-            if (errno == EINTR) //прерван repeat
-                continue;
-            throw std::runtime_error("poll error");
-        }
-
-        for (std::size_t i = 0; i < _pfds.size(); ++i) {
-            if (_pfds[i].revents == 0)
-                continue;
-
-            if (_pfds[i].revents & (POLLERR | POLLHUP | POLLNVAL)) { // disconnected
-                toDrop.push_back(_pfds[i].fd);
-                continue;
-            }
-
-            if (_pfds[i].fd == _listen_fd && (_pfds[i].revents & POLLIN)) {  
-                acceptNewClients(toAdd);
-                continue;
-            }
-
-            if (_pfds[i].revents & POLLIN) {   
-                if (!handleRead(_pfds[i].fd)) {
-                    toDrop.push_back(_pfds[i].fd);
-                    continue;
-                }
-            }
-
-            if (_pfds[i].revents & POLLOUT) {
-                if (!handleWrite(_pfds[i].fd)) {
-                    toDrop.push_back(_pfds[i].fd);
-                    continue;
-                }
-            }
-        }
-        tick(toDrop); //checking existing for hanging
-        if (!toDrop.empty()) {
-
-            for (std::vector<int>::iterator it = toDrop.begin(); it != toDrop.end(); ++it) {
-                close(*it);
-                _clients.erase(*it);
-
-                for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); ) {
-                    if (pit->fd == *it)
-                        pit = _pfds.erase(pit);
-                    else
-                        ++pit; //
-                }
-            }
-        }
-
-        if (!toAdd.empty()) {
-            _pfds.insert(_pfds.end(), toAdd.begin(), toAdd.end());
-        }
-    }
-}
 void Server::tick(std::vector<int>& toDrop) {
     time_t now = time(NULL);
     for (clIter it = _clients.begin(); it != _clients.end(); ++it ){
@@ -235,30 +252,30 @@ void Server::tick(std::vector<int>& toDrop) {
         }
     }
 
-    
-}   
+
+}
+
 const std::string& Server::getPassword() {
     return _pass;
 }
 
-void Server::sendToClient(Client& client, const std::string& line) { 
+void Server::sendToClient(Client& client, const std::string& line) {
     client.addToOutBuff(line);
-    setEvents(client.getFd(), POLLIN | POLLOUT); 
+    setEvents(client.getFd(), POLLIN | POLLOUT);
 }
 
-
-int Server::setNick(Client& client, std::string nick  ){
-        for (clIter it = _clients.begin(); it != _clients.end(); it++){
-            if (it->second.getFd() != client.getFd() && it->second.getNick() == nick)
-            return 433;
-        }
-        client.applyNick(nick);   
+int Server::setNick(Client& client, std::string& nick){
+    for (clIter it = _clients.begin(); it != _clients.end(); it++) {
+        if (it->second.getFd() != client.getFd() && it->second.getNick() == nick)
+            return ERR_NICKNAMEINUSE;
+    }
+    client.applyNick(nick);
     return 0;
 }
 
 Client* Server:: getClientByNick(const std::string& nick){
     for (clIter it = _clients.begin(); it != _clients.end(); it++)
-        if (it->second.getNick() ==   nick)
+        if (it->second.getNick() == nick)
             return &it->second;
     return NULL;
 }
@@ -270,3 +287,15 @@ void Server:: tryRegister(Client& client) {
          client.setWelcomed();
      }
 };
+
+Channel* Server::getChannelByName(std::string& name) {
+    try {
+        return &_channels.at(name);
+    } catch (std::exception &e) {
+        return NULL;
+    }
+}
+
+void    Server::addChannel(Channel c) {
+    _channels.insert(std::pair<std::string, Channel>(c.getName(), c));
+}

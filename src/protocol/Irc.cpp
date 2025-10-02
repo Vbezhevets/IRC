@@ -1,33 +1,40 @@
-
 #include "Irc.hpp"
-#include "Client.hpp"
-#include "Server.hpp"
-
-
 #include <string>
 #include <vector>
 #include <cctype>
+#include <cstdio>
+#include "../utils/utils.hpp"
 
 std::map<std::string, IRC::handler> IRC::handlers;
 std::map<int, std::string> IRC::numAnswers;
 
 void IRC::initNumAnswers() {
-    numAnswers[401]    = "No such nick/channel";
-    numAnswers[409]    = "No origin specified";
-    numAnswers[411]    = "No recipient given";
-    numAnswers[412]    = "No text to send";
+    numAnswers[ERR_NOSUCHNICK]          = "No such nick/channel";
+    numAnswers[ERR_NOORIGIN]            = "No origin specified";
+    numAnswers[ERR_NORECIPIENT]         = "No recipient given";
+    numAnswers[ERR_NOTEXTTOSEND]        = "No text to send";
 
-    numAnswers[421]    = "Unknown command";
-    numAnswers[433]    = "Nickname is already in use";
+    numAnswers[ERR_UNKNOWNCOMMAND]      = "Unknown command";
 
-    
-             /* all errors will be here*/
-    
-    numAnswers[461] = "Not enough parameters";
-    numAnswers[462] = "You may not reregister";
-    numAnswers[464] = "Password incorrect";   
+    numAnswers[ERR_NICKNAMEINUSE]       = "Nickname is already in use";
+    numAnswers[ERR_NONICKNAMEGIVEN]     = "No nickname given";
+
+    numAnswers[ERR_USERNOTINCHANNEL]    = "They aren't on that channel";
+
+    /* all errors will be here*/
+
+    numAnswers[ERR_NEEDMOREPARAMS]      = "Not enough parameters";
+    numAnswers[ERR_ALREADYREGISTRED]    = "You may not reregister";
+    numAnswers[ERR_PASSWDMISMATCH]      = "Password incorrect";
+    numAnswers[ERR_KEYSET]              = "Channel key already set";
+
+    numAnswers[ERR_UNKNOWNMODE]         = "is unknown mode char to me";
+    numAnswers[ERR_BADCHANNELKEY]       = "Cannot join channel (+k)";
+    numAnswers[ERR_CHANNELISFULL]       = "Cannot join channel (+l)";
+    numAnswers[ERR_INVITEONLYCHAN]      = "Cannot join channel (+i)";
+    numAnswers[ERR_CHANOPRIVNEEDED]     = "You're not channel operator";
+
 }
-
 
 void IRC::initHandlers() {
     handlers["PASS"]    = &handlePASS;
@@ -38,9 +45,8 @@ void IRC::initHandlers() {
     handlers["JOIN"]    = &handleJOIN;
     handlers["PART"]    = &handlePART;
     handlers["PONG"]    = &handlePONG;
-
+    handlers["MODE"]    = &handleMODE;
 }
-
 
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     std::size_t pos = buff.find("\r\n");
@@ -48,60 +54,70 @@ bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
         msg = buff.substr(0, pos);
         buff.erase(0, pos + 2);
         return true;
-    } else 
+    } else
         return false;
-    
-    
 }
-static inline void upper(std::string &s) {
+
+static inline void strToUpper(std::string &s) {
     for (std::size_t i = 0; i < s.size(); ++i)
         s[i] = toupper(s[i]);
 }
 
-
-
-std::string  IRC:: makeStringFromServ(const std::string& message ){
- return (std::string(":") + SERVERNAME + " " + message + "\r\n");
+std::string  IRC:: makeStringFromServ(const std::string& message ) {
+    return (std::string(":") + SERVERNAME + " " + message + "\r\n");
 }
-std::string IRC:: makeNumString(int n, Client& client, std::string cmd , const std::string& trailing ) {
+
+std::string IRC:: makeNumStringName(int n, const std::string &name, std::string cmd, const std::string &trailing) {
     char codeBuf[4];
     std::snprintf(codeBuf, sizeof(codeBuf), "%03d", n);
 
     std::string text = IRC::numAnswers.count(n) ? IRC::numAnswers[n] : trailing; // trailing give possibility to send here our own specific message
 
-    std::string reply = std::string(":") + SERVERNAME + " " + std::string(codeBuf) + " " + client.getNick();
+    std::string reply = std::string(":") + SERVERNAME + " " + std::string(codeBuf) + " " + name;
 
     if (!cmd.empty())
         reply += " " + cmd;
 
     if (!text.empty())
         reply += " :" + text;
-    reply += "\r\n"; 
+    reply += "\r\n";
 
     return reply;
+}
+
+std::string IRC::makeNumStringChannel(int n, Channel &channel, std::string cmd, const std::string& trailing) {
+    return makeNumStringName(n, channel.getName(), cmd, trailing);
+}
+
+std::string IRC:: makeNumString(int n, Client& client, std::string cmd, const std::string& trailing) {
+    return makeNumStringName(n, client.getNick(), cmd, trailing);
 }
 
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     client.updateActive();
 
+    LOG_DEBUG << "Received Message " << msg << " from client " << client.getFd() << std::endl;
+
     command tempCmd = parseLine(msg);
     if (tempCmd.cmd.empty()) {
-       s.sendToClient(client, IRC::makeNumString(421,client, "")); return;
+       s.sendToClient(client, IRC::makeNumString(ERR_UNKNOWNCOMMAND, client, "")); return;
     }
+
+    tempCmd.display();
+
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())
         it->second(s, client, tempCmd);
-    else 
-        s.sendToClient(client, IRC::makeNumString(421,client, tempCmd.cmd));
-};
-
+    else
+        s.sendToClient(client, IRC::makeNumString(ERR_UNKNOWNCOMMAND, client, tempCmd.cmd));
+}
 
 static void trimRight(std::string &s) {
     while (!s.empty() && (s[s.size()-1] == ' ' || s[s.size()-1] == '\t'))
         s.erase(s.size()-1);
 }
 
-IRC::command IRC:: parseLine( std::string s) { 
+IRC::command IRC:: parseLine( std::string s) {
     command out;
     trimRight(s);
     if (s.empty()) return out;
@@ -121,10 +137,8 @@ IRC::command IRC:: parseLine( std::string s) {
     const char *cmdStart = p;
     while (p < end && *p != ' ') ++p;
     out.cmd = std::string(cmdStart, p - cmdStart);
-    upper(out.cmd);
 
-    for (size_t i = 0; i < out.cmd.size(); ++i)
-        out.cmd[i] = (char)std::toupper((unsigned char)out.cmd[i]);
+    strToUpper(out.cmd);
 
     while (p < end) {
         while (p < end && *p == ' ') ++p;

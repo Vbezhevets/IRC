@@ -39,3 +39,9 @@ plan.txt
 
 # debug information files
 *.dwo
+
+# MacOS specific
+.DS_Store
+
+obj/
+deps/
