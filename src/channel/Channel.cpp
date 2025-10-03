@@ -1,5 +1,10 @@
 #include "Channel.hpp"
+#include <queue>
+#include <sstream>
 #include <string>
+#include "../server/Server.hpp"
+#include "../client/Client.hpp"
+#include "../utils/utils.hpp"
 
 Channel::Channel() {}
 
@@ -122,4 +127,180 @@ bool Channel::isKey(const std::string &key) const {
 
 bool Channel::hasClient(const Client *client) const {
     return _clients.count(client) > 0;
+}
+
+bool Channel::hasTopic(void) const {
+    return !_topic.empty();
+}
+
+const std::string& Channel::getTopic(void) const {
+    return _topic;
+}
+
+void Channel::setTopic(std::string topic) {
+    _topic = topic;
+}
+
+std::string Channel::getUsersOnChannel(void) const {
+    std::set<const Client *>::iterator it = _clients.begin();
+    std::string users;
+
+    while (it != _clients.end()) {
+        if (isOperator(*it)) {
+            users += "@" + (*it)->getNick();
+        } else {
+            users += (*it)->getNick();
+        }
+    }
+    return users;
+}
+
+void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::command &cmd) {
+    std::queue<std::string> args;
+    std::string successfulModes = "";
+    std::vector<std::string> successfulParams;
+
+    for (size_t i = 2; i < cmd.params.size(); i++) {
+        args.push(cmd.params[i]);
+    }
+
+    LOG_DEBUG << "mode in handleModeSet " << modes << std::endl;
+
+    for (size_t i = 0; i < modes.size(); i++) {
+        char c = modes[i];
+        LOG_DEBUG << "mode in loop " << c << std::endl;
+        switch (c) {
+            case 'i':
+                this->setMode(MODE_INVITE_ONLY);
+                successfulModes += c;
+                break;
+            case 't':
+                this->setMode(MODE_TOPIC_OPERATOR_ONLY);
+                successfulModes += c;
+                break;
+            case 'o':
+                if (args.empty()) {
+                    S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client));
+                } else {
+                    std::string param = args.front();
+                    args.pop();
+                    Client *targetClient = S.getClientByNick(param);
+                    if (!targetClient) {
+                        S.sendToClient(client, IRC::makeNumStringName(ERR_USERNOTINCHANNEL, cmd.params[2] + this->getDisplayName()));
+                    }
+                    if (this->hasClient(targetClient)) {
+                        if (!this->isOperator(targetClient)) {
+                            this->addOperator(targetClient);
+                            successfulModes += c;
+                            successfulParams.push_back(param);
+                        }
+                    }
+                }
+                break;
+            case 'l':
+                if (args.empty()) {
+                    S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client));
+                } else {
+                    std::string param = args.front();
+                    args.pop();
+                    this->setMode(MODE_USER_LIMIT);
+                    std::stringstream s(param);
+                    size_t limit = 0;
+                    s >> limit;
+                    if (s.fail()) {
+                        S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, s.str()));
+                    } else {
+                        this->setLimit(limit);
+                        successfulModes += c;
+                        successfulParams.push_back(param);
+                    }
+                }
+                break;
+            case 'k':
+                if (args.empty()) {
+                    S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client));
+                } else {
+                    std::string param = args.front();
+                    args.pop();
+                    LOG_DEBUG << "key param " << param << std::endl;
+                    if (this->hasMode(MODE_KEY_PROTECTED)) {
+                        S.sendToClient(client, IRC::makeNumStringChannel(ERR_NEEDMOREPARAMS, *this));
+                    } else {
+                        this->setMode(MODE_KEY_PROTECTED);
+                        this->setKey(param);
+                        successfulModes += c;
+                        successfulParams.push_back(param);
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+    if (!successfulModes.empty()) {
+        std::string modeChangeMsg = ":" + client.getMask() + "MODE " + getDisplayName() + " +" + modes;
+        for (size_t i = 0; i < successfulParams.size(); i++) {
+            modeChangeMsg += " " + successfulParams[i];
+        }
+        modeChangeMsg += "\r\n";
+        broadcast(S, modeChangeMsg);
+    }
+}
+
+void    Channel::broadcast(Server &s, std::string &msg) const {
+    std::set<const Client *>::iterator it = getClients().begin();
+
+    while (it != getClients().end()) {
+        s.sendToClient(*const_cast<Client *>(*it), msg);
+        it++;
+    }
+}
+
+void Channel::handleModeUnset(Server &S, Client &client, std::string modes, IRC::command &cmd) {
+    std::queue<std::string> args;
+    for (size_t i = 2; i < cmd.params.size(); i++) {
+        args.push(cmd.params[i]);
+    }
+
+    for (size_t i = 0; i < modes.size(); i++) {
+        char c = modes[i];
+        switch (c) {
+            case 'i':
+                this->unsetMode(MODE_INVITE_ONLY);
+                break;
+            case 't':
+                this->unsetMode(MODE_TOPIC_OPERATOR_ONLY);
+                break;
+            case 'o':
+                if (args.empty()) {
+                    S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client));
+                } else {
+                    std::string param = args.front();
+                    args.pop();
+                    Client *targetClient = S.getClientByNick(param);
+                    if (!targetClient) {
+                        S.sendToClient(client, IRC::makeNumString(ERR_NOSUCHNICK, client));
+                        return ;
+                    }
+                    if (this->isOperator(targetClient)) {
+                        this->removeOperator(targetClient);
+                    } else {
+                        S.sendToClient(client, IRC::makeNumStringName(ERR_USERNOTINCHANNEL, param + " " + this->getDisplayName()));
+                        return ;
+                    }
+                }
+                break;
+            case 'l':
+                this->unsetMode(MODE_USER_LIMIT);
+                this->setLimit(0);
+                break;
+            case 'k':
+                this->unsetMode(MODE_KEY_PROTECTED);
+                this->setKey("");
+                break;
+            default:
+                S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, std::string() + c));
+                return ;
+        }
+    }
 }

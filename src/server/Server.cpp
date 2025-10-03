@@ -9,6 +9,8 @@
 
 #include "Server.hpp"
 #include "../utils/utils.hpp"
+#include "../channel/Channel.hpp"
+#include "../client/Client.hpp"
 
 extern volatile sig_atomic_t g_running;
 

@@ -4,6 +4,9 @@
 #include <cctype>
 #include <cstdio>
 #include "../utils/utils.hpp"
+#include "../channel/Channel.hpp"
+#include "../client/Client.hpp"
+#include "../server/Server.hpp"
 
 std::map<std::string, IRC::handler> IRC::handlers;
 std::map<int, std::string> IRC::numAnswers;
@@ -18,8 +21,12 @@ void IRC::initNumAnswers() {
 
     numAnswers[ERR_NICKNAMEINUSE]       = "Nickname is already in use";
     numAnswers[ERR_NONICKNAMEGIVEN]     = "No nickname given";
+    numAnswers[ERR_ERRONEUSNICKNAME]    = "Erroneus nickname";
 
     numAnswers[ERR_USERNOTINCHANNEL]    = "They aren't on that channel";
+    numAnswers[ERR_NOTONCHANNEL]        = "You're not on that channel";
+    numAnswers[ERR_USERONCHANNEL]       = "is already in channel";
+    numAnswers[ERR_NOTREGISTERED]       = "You have not registered";
 
     /* all errors will be here*/
 
@@ -51,7 +58,8 @@ void IRC::initHandlers() {
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     std::size_t pos = buff.find("\r\n");
     if (pos != std::string::npos) {
-        msg = buff.substr(0, pos);
+        size_t msgEnd = (pos > MAX_MESSAGE_LEN) ? MAX_MESSAGE_LEN : pos;
+        msg = buff.substr(0, msgEnd);
         buff.erase(0, pos + 2);
         return true;
     } else
@@ -104,6 +112,17 @@ void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     }
 
     tempCmd.display();
+
+    if (tempCmd.cmd == "PRIVMSG"
+        || tempCmd.cmd == "JOIN"
+        || tempCmd.cmd == "MODE"
+        || tempCmd.cmd == "PART"
+        || tempCmd.cmd == "INVITE") {
+        if (!client.isRegistered()) {
+            s.sendToClient(client, IRC::makeNumString(ERR_NOTREGISTERED, client));
+            return ;
+        }
+    }
 
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())

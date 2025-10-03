@@ -2,7 +2,9 @@
 
 #include <string>
 #include <set>
-#include "../client/Client.hpp"
+#include "../protocol/Irc.hpp"
+
+class Client;
 
 enum ChannelModes {
     MODE_INVITE_ONLY,
@@ -33,6 +35,7 @@ public:
     void                setName(const std::string &name);
 
     std::string         getDisplayName(void) const;
+    std::string         getUsersOnChannel(void) const;
 
     const std::set<const Client *>  &getClients(void) const;
     const std::set<const Client *>  &getOperators(void) const;
@@ -52,9 +55,19 @@ public:
 
     bool    hasClient(const Client *client) const;
 
+    bool                hasTopic(void) const;
+    const std::string   &getTopic(void) const;
+    void                setTopic(std::string topic);
+
+    void    handleModeSet(Server &S, Client &client, std::string modes, IRC::command &cmd);
+    void    handleModeUnset(Server &S, Client &client, std::string modes, IRC::command &cmd);
+
+    void    broadcast(Server &s, std::string &msg) const;
+
 private:
     std::string                 _name;
     std::string                 _key;
+    std::string                 _topic;
     std::set<const Client *>    _clients;
     std::set<const Client *>    _operators;
 

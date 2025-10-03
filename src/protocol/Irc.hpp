@@ -3,8 +3,16 @@
 #include <sys/poll.h>
 #include <vector>
 #include <map>
-#include "../server/Server.hpp"
 #include <iostream>
+#include "../client/Client.hpp"
+
+#define MAX_MESSAGE_LEN 510
+
+enum Replies {
+    RPL_TOPIC               = 332,
+    RPL_NAMREPLY            = 353,
+    REPL_ENDOFNAME          = 366,
+};
 
 enum ErrReplies {
     ERR_NOSUCHNICK          = 401,
@@ -15,9 +23,13 @@ enum ErrReplies {
     ERR_NOTEXTTOSEND        = 412,
     ERR_UNKNOWNCOMMAND      = 421,
     ERR_NONICKNAMEGIVEN     = 431,
+    ERR_ERRONEUSNICKNAME    = 432,
     ERR_NICKNAMEINUSE       = 433,
 
-    ERR_USERNOTINCHANNEL    = 442,
+    ERR_USERNOTINCHANNEL    = 441,
+    ERR_NOTONCHANNEL        = 442,
+    ERR_USERONCHANNEL       = 443,
+    ERR_NOTREGISTERED       = 451,
 
     ERR_NEEDMOREPARAMS      = 461,
     ERR_ALREADYREGISTRED    = 462,
@@ -32,7 +44,6 @@ enum ErrReplies {
 };
 
 class Server;
-class Client;
 class Channel;
 
 class IRC {
@@ -83,4 +94,5 @@ class IRC {
         static void handlePART(Server&, Client&, command&);
         static void handlePONG(Server&, Client&, command&);
         static void handleMODE(Server&, Client&, command&);
+        static void handleINVITE(Server&, Client&, command&);
 };

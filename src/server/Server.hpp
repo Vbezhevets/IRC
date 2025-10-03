@@ -8,20 +8,15 @@
 #include <csignal>
 #include <ctime>
 #include <cstring>
-#include <cerrno>
 #include <unistd.h>
 #include <fcntl.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-
-
-#include "../protocol/Irc.hpp"
-#include "../client/Client.hpp"
 #include "../channel/Channel.hpp"
 
+class Client;
 
 #define SERVERNAME "👾"
-
 #define CONNECTION_QUEUE_SIZE 100
 #define POLL_TIMEOUT 200
 #define READ_BUF_SIZE 1024
