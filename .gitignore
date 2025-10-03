@@ -43,5 +43,6 @@ plan.txt
 # MacOS specific
 .DS_Store
 
+ircserv
 obj/
 deps/
