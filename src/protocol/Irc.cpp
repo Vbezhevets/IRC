@@ -17,6 +17,9 @@ void IRC::initNumAnswers() {
     numAnswers[ERR_NORECIPIENT]         = "No recipient given";
     numAnswers[ERR_NOTEXTTOSEND]        = "No text to send";
 
+    numAnswers[RPL_ENDOFNAME]           = "End of /NAMES list";
+    numAnswers[RPL_NOTOPIC]             = "No topic is set";
+
     numAnswers[ERR_UNKNOWNCOMMAND]      = "Unknown command";
 
     numAnswers[ERR_NICKNAMEINUSE]       = "Nickname is already in use";
@@ -53,6 +56,9 @@ void IRC::initHandlers() {
     handlers["PART"]    = &handlePART;
     handlers["PONG"]    = &handlePONG;
     handlers["MODE"]    = &handleMODE;
+    handlers["INVITE"]  = &handleINVITE;
+    handlers["KICK"]    = &handleKICK;
+    handlers["TOPIC"]   = &handleTOPIC;
 }
 
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
@@ -71,17 +77,17 @@ static inline void strToUpper(std::string &s) {
         s[i] = toupper(s[i]);
 }
 
-std::string  IRC:: makeStringFromServ(const std::string& message ) {
+std::string  IRC:: makeStringFromServ(const std::string& message) {
     return (std::string(":") + SERVERNAME + " " + message + "\r\n");
 }
 
-std::string IRC:: makeNumStringName(int n, const std::string &name, std::string cmd, const std::string &trailing) {
+std::string IRC:: makeNumStringName(int n, const std::string &name, const std::string &prefix, std::string cmd, const std::string &trailing) {
     char codeBuf[4];
     std::snprintf(codeBuf, sizeof(codeBuf), "%03d", n);
 
     std::string text = IRC::numAnswers.count(n) ? IRC::numAnswers[n] : trailing; // trailing give possibility to send here our own specific message
 
-    std::string reply = std::string(":") + SERVERNAME + " " + std::string(codeBuf) + " " + name;
+    std::string reply = std::string(":") + prefix + " " + std::string(codeBuf) + " " + name;
 
     if (!cmd.empty())
         reply += " " + cmd;
@@ -90,15 +96,16 @@ std::string IRC:: makeNumStringName(int n, const std::string &name, std::string 
         reply += " :" + text;
     reply += "\r\n";
 
+    LOG_DEBUG << "Sending Response: " << reply << std::endl;
     return reply;
 }
 
-std::string IRC::makeNumStringChannel(int n, Channel &channel, std::string cmd, const std::string& trailing) {
-    return makeNumStringName(n, channel.getName(), cmd, trailing);
+std::string IRC::makeNumStringChannel(int n, Channel &channel, const std::string &prefix, std::string cmd, const std::string& trailing) {
+    return makeNumStringName(n, channel.getDisplayName(), prefix, cmd, trailing);
 }
 
-std::string IRC:: makeNumString(int n, Client& client, std::string cmd, const std::string& trailing) {
-    return makeNumStringName(n, client.getNick(), cmd, trailing);
+std::string IRC:: makeNumString(int n, Client& client, const std::string &prefix, std::string cmd, const std::string& trailing) {
+    return makeNumStringName(n, client.getNick(), prefix, cmd, trailing);
 }
 
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
@@ -164,6 +171,7 @@ IRC::command IRC:: parseLine( std::string s) {
         if (p >= end) break;
 
         if (*p == ':') {
+            out.had_trailing = true;
             ++p;
             out.trailing = std::string(p, end - p);
             break;

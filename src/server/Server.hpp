@@ -16,7 +16,10 @@
 
 class Client;
 
-#define SERVERNAME "👾"
+#ifndef SERVERNAME
+# define SERVERNAME "👾"
+#endif
+
 #define CONNECTION_QUEUE_SIZE 100
 #define POLL_TIMEOUT 200
 #define READ_BUF_SIZE 1024
@@ -52,8 +55,9 @@ public:
     void    tryRegister(Client&);
     Client* getClientByNick(const std::string& nick);
 
-    Channel*    getChannelByName(std::string &name);
+    Channel*    getChannelByName(const std::string &name);
     void        addChannel(Channel c);
+    void        removeChannel(const std::string &name);
 
     const std::string&  getPassword();
 };

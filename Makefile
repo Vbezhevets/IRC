@@ -17,6 +17,7 @@ DEP_DIR := ./deps
 OBJ_DIR := ./obj
 
 UTIL_SRC := $(addprefix $(UTIL_DIR)/, $(addsuffix .cpp, \
+					utils \
 				))
 SERVER_SRC := $(addprefix $(SERVER_DIR)/, $(addsuffix .cpp, \
 					Server \

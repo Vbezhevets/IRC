@@ -1,5 +1,6 @@
 #pragma once
 
+#include <queue>
 #include <string>
 #include <set>
 #include "../protocol/Irc.hpp"
@@ -28,24 +29,29 @@ public:
     void    removeClient(const Client *client);
     void    addOperator(const Client *client);
     void    removeOperator(const Client *client);
+    void    addInvited(const Client *client);
+    void    removeInvited(const Client *client);
 
     const std::string   &getKey(void) const;
     void                setKey(const std::string &key);
     const std::string   &getName(void) const;
     void                setName(const std::string &name);
 
-    std::string         getDisplayName(void) const;
-    std::string         getUsersOnChannel(void) const;
+    std::string             getDisplayName(void) const;
+    std::queue<std::string> getUsersOnChannel(void) const;
 
     const std::set<const Client *>  &getClients(void) const;
     const std::set<const Client *>  &getOperators(void) const;
 
     bool    isOperator(const Client *op) const;
+    bool    isInvited(const Client *op) const;
 
     void    setMode(int mode);
     void    unsetMode(int mode);
     int     getMode(void) const;
     bool    hasMode(int mode) const;
+
+    std::string getModeString(void) const;
 
     void    setLimit(size_t limit);
     size_t  getLimit(void) const;
@@ -70,6 +76,7 @@ private:
     std::string                 _topic;
     std::set<const Client *>    _clients;
     std::set<const Client *>    _operators;
+    std::set<const Client *>    _invited;
 
     size_t          _limit;
     unsigned char   _mode;

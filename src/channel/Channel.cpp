@@ -61,6 +61,14 @@ void Channel::removeOperator(const Client *op) {
     _operators.erase(op);
 }
 
+void Channel::addInvited(const Client *client) {
+    _invited.insert(client);
+}
+
+void Channel::removeInvited(const Client *client) {
+    _invited.erase(client);
+}
+
 const std::set<const Client *> &Channel::getClients( void ) const {
     return _clients;
 }
@@ -91,6 +99,10 @@ void Channel::setKey(const std::string &key) {
 
 bool Channel::isOperator(const Client *op) const {
     return _operators.find(op) != _operators.end();
+}
+
+bool Channel::isInvited(const Client *client) const {
+    return _invited.count(client) != 0;
 }
 
 int     Channel::getMode(void) const {
@@ -141,16 +153,39 @@ void Channel::setTopic(std::string topic) {
     _topic = topic;
 }
 
-std::string Channel::getUsersOnChannel(void) const {
+std::string Channel::getModeString(void) const {
+    std::string modes = "+";
+    std::stringstream params;
+    if (hasMode(MODE_INVITE_ONLY)) {
+        modes.push_back('i');
+    }
+    if (hasMode(MODE_TOPIC_OPERATOR_ONLY)) {
+        modes.push_back('t');
+    }
+    if (hasMode(MODE_KEY_PROTECTED)) {
+        modes.push_back('k');
+    }
+    if (hasMode(MODE_USER_LIMIT)) {
+        modes.push_back('l');
+        params << " " << _limit;
+    }
+    if (!params.str().empty()) {
+        modes += params.str();
+    }
+    return modes;
+}
+
+std::queue<std::string> Channel::getUsersOnChannel(void) const {
     std::set<const Client *>::iterator it = _clients.begin();
-    std::string users;
+    std::queue<std::string> users;
 
     while (it != _clients.end()) {
         if (isOperator(*it)) {
-            users += "@" + (*it)->getNick();
+            users.push("@" + (*it)->getNick());
         } else {
-            users += (*it)->getNick();
+            users.push((*it)->getNick());
         }
+        it++;
     }
     return users;
 }
@@ -238,7 +273,7 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
         }
     }
     if (!successfulModes.empty()) {
-        std::string modeChangeMsg = ":" + client.getMask() + "MODE " + getDisplayName() + " +" + modes;
+        std::string modeChangeMsg = ":" + client.getMask() + " MODE " + getDisplayName() + " +" + modes;
         for (size_t i = 0; i < successfulParams.size(); i++) {
             modeChangeMsg += " " + successfulParams[i];
         }
@@ -251,6 +286,7 @@ void    Channel::broadcast(Server &s, std::string &msg) const {
     std::set<const Client *>::iterator it = getClients().begin();
 
     while (it != getClients().end()) {
+        LOG_DEBUG << "Sending to client: " << (*it)->getNick() << std::endl;
         s.sendToClient(*const_cast<Client *>(*it), msg);
         it++;
     }

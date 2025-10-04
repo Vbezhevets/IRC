@@ -73,9 +73,9 @@ void Server::run() {
 
         int r = poll(&_pfds[0], _pfds.size(), POLL_TIMEOUT);
         if (r < 0) {
-            if (errno == EINTR) //прерван repeat
-                continue;
-            throw std::runtime_error("poll error");
+            continue;
+        } else if (r == 0) {
+
         }
 
         for (std::size_t i = 0; i < _pfds.size(); ++i) {
@@ -144,11 +144,7 @@ void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
         int client_fd = accept(_listen_fd, reinterpret_cast<sockaddr*>(&addr), &len);
 
         if (client_fd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) //  nothing (all from queue were accepted)
-                break;
-            if (errno == EINTR) //прерван repeat
-                continue;
-            throw std::runtime_error("accept error");
+            break;
         }
 
         int cfl = fcntl(client_fd, F_GETFL, 0);
@@ -188,51 +184,44 @@ bool Server::handleRead(int fd) {
     Client& client = getClient(fd);
     char buff[READ_BUF_SIZE];
 
-    while (true) {
-        ssize_t n = recv(fd, buff, sizeof(buff), 0);
-        if (n > 0) {
-            client.appendInBuff(buff, static_cast<std::size_t>(n));
-            std::string msg;
+    ssize_t n = recv(fd, buff, sizeof(buff), 0);
+    if (n > 0) {
+        client.appendInBuff(buff, static_cast<std::size_t>(n));
 
-            while (IRC::extractOneMessage(client.getInBuff(), msg))
-                IRC::handleMessage(*this, client, msg);
+        std::string msg;
+        while (IRC::extractOneMessage(client.getInBuff(), msg))
+            IRC::handleMessage(*this, client, msg);
 
-            if (client.wantsWrite())
-                setEvents(fd, POLLIN | POLLOUT);
-
-            continue;
+        if (client.wantsWrite()) {
+            setEvents(fd, POLLIN | POLLOUT);
         }
+    }
 
-        if (n == 0)
-            return false; // peer closed
-
-        if (n < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return true;
-            if (errno == EINTR)
-                continue;
-            return false;
-        }
+    if (n == 0) {
+        return false; // peer closed
+    } else {
+        return true;
     }
 }
 
 bool Server::handleWrite(int fd) {
     Client& client = getClient(fd);
     std::string& outBuf = client.getOutBuff();
-
-    while (!outBuf.empty()) {
-        ssize_t n = send(fd, outBuf.c_str(), outBuf.size(), MSG_NOSIGNAL);
-        if (n > 0) {
-            outBuf.erase(0, static_cast<std::size_t>(n));
-            continue;
+    if (outBuf.empty()) {
+        setEvents(fd, POLLIN);
+        return true;
+    }
+    ssize_t n = send(fd, outBuf.c_str(), outBuf.size(), MSG_NOSIGNAL);
+    if (n > 0) {
+        outBuf.erase(0, static_cast<std::size_t>(n));
+        if (outBuf.empty()) {
+            setEvents(fd, POLLIN);
+        } else {
+            setEvents(fd, POLLOUT | POLLIN);
         }
-        if (n == 0)
-            return true;
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return true;
-        if (errno == EINTR) //прерван repeat
-            continue;
-        return false;
+    } else {
+        // EWOULDBLOCK OR EAGAIN -> do nothing
+        // rely on recv() to handle closed connection
     }
 
     setEvents(fd, POLLIN);
@@ -253,8 +242,6 @@ void Server::tick(std::vector<int>& toDrop) {
             toDrop.push_back(client.getFd());
         }
     }
-
-
 }
 
 const std::string& Server::getPassword() {
@@ -290,7 +277,7 @@ void Server:: tryRegister(Client& client) {
      }
 };
 
-Channel* Server::getChannelByName(std::string& name) {
+Channel* Server::getChannelByName(const std::string& name) {
     try {
         return &_channels.at(name);
     } catch (std::exception &e) {
@@ -300,4 +287,8 @@ Channel* Server::getChannelByName(std::string& name) {
 
 void    Server::addChannel(Channel c) {
     _channels.insert(std::pair<std::string, Channel>(c.getName(), c));
+}
+
+void    Server::removeChannel(const std::string &name) {
+    _channels.erase(name);
 }

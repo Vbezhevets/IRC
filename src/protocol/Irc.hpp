@@ -9,9 +9,12 @@
 #define MAX_MESSAGE_LEN 510
 
 enum Replies {
+    RPL_CHANNELMODEIS       = 324,
+    RPL_NOTOPIC             = 331,
     RPL_TOPIC               = 332,
     RPL_NAMREPLY            = 353,
-    REPL_ENDOFNAME          = 366,
+    RPL_ENDOFNAME           = 366,
+    RPL_INVITING            = 341,
 };
 
 enum ErrReplies {
@@ -46,6 +49,10 @@ enum ErrReplies {
 class Server;
 class Channel;
 
+#ifndef SERVERNAME
+# define SERVERNAME "👾"
+#endif
+
 class IRC {
     public:
 
@@ -54,6 +61,7 @@ class IRC {
             std::string cmd;
             std::vector <std::string> params;
             std::string trailing;
+            bool        had_trailing;
 
             void display() {
                 std::cerr
@@ -70,8 +78,8 @@ class IRC {
         //handlers for commands:
         typedef void (*handler)(Server& , Client&, command& ) ;
 
-        static std::map <std::string, handler>  handlers ;
-        static std::map <int, std::string>     numAnswers;
+        static std::map <std::string, handler>  handlers;
+        static std::map <int, std::string>      numAnswers;
 
         static void initHandlers();
         static void initNumAnswers();
@@ -80,9 +88,9 @@ class IRC {
         static void     handleMessage(Server& s, Client& cleint, const std::string& msg) ;
         static command  parseLine(std::string line);
 
-        static std::string makeNumString(int n, Client& client, std::string cmd = "", const std::string& trailing = "" );
-        static std::string makeNumStringName(int n, const std::string &name, std::string cmd = "", const std::string& trailing = "" );
-        static std::string makeNumStringChannel(int n, Channel &channel, std::string cmd = "", const std::string& trailing = "" );
+        static std::string makeNumString(int n, Client& client, const std::string &prefix = SERVERNAME, std::string cmd = "", const std::string& trailing = "" );
+        static std::string makeNumStringName(int n, const std::string &name, const std::string &prefix = SERVERNAME, std::string cmd = "", const std::string& trailing = "" );
+        static std::string makeNumStringChannel(int n, Channel &channel, const std::string &prefix = SERVERNAME, std::string cmd = "", const std::string& trailing = "" );
         static std::string makeStringFromServ( const std::string& message);
 
         static void handlePASS(Server&, Client&, command&);
@@ -95,4 +103,6 @@ class IRC {
         static void handlePONG(Server&, Client&, command&);
         static void handleMODE(Server&, Client&, command&);
         static void handleINVITE(Server&, Client&, command&);
+        static void handleKICK(Server&, Client&, command&);
+        static void handleTOPIC(Server&, Client&, command&);
 };
