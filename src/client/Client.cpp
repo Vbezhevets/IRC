@@ -1,4 +1,5 @@
 #include "Client.hpp"
+#include "../protocol/Irc.hpp"
 
 Client::Client() {}
 
@@ -26,7 +27,11 @@ std::string& Client::getOutBuff() {
 }
 
 void Client::addToOutBuff(const std::string& s) {
-    _out_buff_for_client += s;
+    std::string toAdd = s;
+    if (s.size() > MAX_MESSAGE_LEN + 2) {
+        toAdd = s.substr(0, MAX_MESSAGE_LEN) + "\r\n";
+    }
+    _out_buff_for_client += toAdd;
 }
 
 bool Client::wantsWrite() const {
