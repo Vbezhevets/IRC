@@ -1,20 +1,17 @@
-#include "Client.hpp"                                                   
+#include "Client.hpp"
+#include "../protocol/Irc.hpp"
 
-
-
-
-Client::Client() {};
+Client::Client() {}
 
 Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _user("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
   _isRegistered(false), _isWelcomed(false),  _last_active(std::time(NULL)), _awaitingPong(false) {}
 
-  Client::~Client() {};
+Client::~Client() {}
 
-  void Client::tryMakeRegistered() {
+void Client::tryMakeRegistered() {
     if (_passOk && _hasNick && _hasUser && !_isRegistered) {
         _isRegistered = true;
     }
-    
 }
 
 void Client::appendInBuff(const char* data, std::size_t n) {
@@ -30,14 +27,18 @@ std::string& Client::getOutBuff() {
 }
 
 void Client::addToOutBuff(const std::string& s) {
-    _out_buff_for_client += s;
+    std::string toAdd = s;
+    if (s.size() > MAX_MESSAGE_LEN + 2) {
+        toAdd = s.substr(0, MAX_MESSAGE_LEN) + "\r\n";
+    }
+    _out_buff_for_client += toAdd;
 }
 
 bool Client::wantsWrite() const {
     return !_out_buff_for_client.empty();
 }
 
- 
+
 std::time_t Client::lastActive() const {
     return _last_active;
 }
@@ -45,7 +46,7 @@ std::time_t Client::lastActive() const {
 void Client::updateActive() {
     _last_active = std::time(NULL);
 }
- 
+
 bool Client::isAwaitingPong() const {
     return _awaitingPong;
 }
@@ -54,12 +55,10 @@ void Client::setAwaitingPong(bool b) {
     _awaitingPong = b;
 }
 
- 
 int Client::getFd() const {
     return _fd;
 }
 
- 
 void Client::applyNick(const std::string& nick) {
     _nick = nick;
     _hasNick = true;
@@ -84,7 +83,6 @@ const std::string& Client::getUserName() const {
 const std::string& Client::getRealName() const {
     return _realname;
 }
- 
 
 const std::string& Client::getHost() const {
     return _host;
@@ -102,11 +100,11 @@ bool Client::isRegistered() const {
 std::string Client::getMask() const{
     return  _nick + "!" + _user + "@" + _host;
 }
- 
+
 bool Client::isWelcomed() const {
     return _isWelcomed;
 }
- 
+
 void Client::setWelcomed()  {
      _isWelcomed = true;
 }

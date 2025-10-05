@@ -14,41 +14,36 @@ private:
     std::string _realname;
     std::string _host;
 
-    bool        _passOk; 
-    bool        _hasNick; 
-    bool        _hasUser; 
-    bool        _isRegistered; 
-    bool        _isWelcomed; 
-
- 
+    bool        _passOk;
+    bool        _hasNick;
+    bool        _hasUser;
+    bool        _isRegistered;
+    bool        _isWelcomed;
 
     std::time_t _last_active;
     bool        _awaitingPong;
 
-    
-    public:
+public:
+
     Client();
     Client(int fd, std::string host);
     ~Client();
-    
-    
+
     void appendInBuff(const char* data, std::size_t n);
     std::string& getInBuff();
     std::string& getOutBuff();
     void addToOutBuff(const std::string& s);
     bool wantsWrite() const;
-    
+
     std::time_t lastActive() const;
     void updateActive();
-    
-    void tryMakeRegistered();    
+
+    void tryMakeRegistered();
 
     bool isAwaitingPong() const;
     void setAwaitingPong(bool b);
 
     int getFd() const;
-
-
 
     const std::string& getNick() const;
 

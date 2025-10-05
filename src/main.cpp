@@ -1,4 +1,4 @@
-#include "Server.hpp"
+#include "./server/Server.hpp"
 #include <exception>
 #include <sstream>
 #include <stdexcept>
@@ -11,19 +11,21 @@ unsigned short parsePort(const std::string s){
         throw std::invalid_argument("empty port");
     std::stringstream ss(s);
     long p;
-    if (!(ss >> p)) 
+    if (!(ss >> p))
         throw std::invalid_argument("invalid port");
     if (p > 65535 || p <= 0)
         throw std::invalid_argument("invalid port");
     return (unsigned short)p;
 }
+
 void signal_handler(int sig){
-    if (sig == SIGINT)  
+    if (sig == SIGINT)
         g_running = 0;
 }
+
 int main(int argc , char **argv) {
-    
-    if (argc!=3) {
+
+    if (argc != 3) {
         std::cerr << "Usage: " << argv[0] << " <port> <password>\n";
         return 1;
     }
@@ -35,7 +37,7 @@ int main(int argc , char **argv) {
         s.run();
     }
     catch (const std::exception &e){
-        std::cerr << "Error: " << e.what() <<std::endl; 
+        std::cerr << "Error: " << e.what() <<std::endl;
         return 1;
     }
     return 0;
