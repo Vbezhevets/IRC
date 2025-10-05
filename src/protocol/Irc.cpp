@@ -124,12 +124,15 @@ void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
         || tempCmd.cmd == "JOIN"
         || tempCmd.cmd == "MODE"
         || tempCmd.cmd == "PART"
-        || tempCmd.cmd == "INVITE") {
+        || tempCmd.cmd == "INVITE" 
+        || tempCmd.cmd == "KICK" 
+        || tempCmd.cmd == "TOPIC") {
         if (!client.isRegistered()) {
             s.sendToClient(client, IRC::makeNumString(ERR_NOTREGISTERED, client));
             return ;
         }
-    }
+    } 
+    
 
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())

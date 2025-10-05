@@ -45,7 +45,7 @@ void IRC::  handlePASS(Server& S, Client& client, IRC::command& cmd) {
         S.sendToClient(client, IRC::makeNumString(ERR_PASSWDMISMATCH, client));
     else {
         client.passOk();
-        S.tryRegister(client);;
+        S.tryRegister(client);
     }
 
 }
@@ -229,7 +229,8 @@ void handleChannelMODE(Server& S, Client& client, IRC::command& cmd) {
                 } else if (modes[0] == '-') {
                     chan->handleModeUnset(S, client, modes.substr(1), cmd);
                 } else {
-                    S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, std::string() + target[0]));
+                    S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE,
+                                              cmd.params[1].empty() ? "" : std::string(1, cmd.params[1][0])));
                 }
             } else {
                 S.sendToClient(client, IRC::makeNumString(ERR_CHANOPRIVNEEDED, client));
@@ -239,7 +240,7 @@ void handleChannelMODE(Server& S, Client& client, IRC::command& cmd) {
             S.sendToClient(client, IRC::makeNumStringName(RPL_CHANNELMODEIS, chan->getDisplayName() + " " + chan->getModeString()));
         }
     } else {
-        S.sendToClient(client, IRC::makeNumString(ERR_NOSUCHNICK, client));
+        S.sendToClient(client, IRC::makeNumString(ERR_NOSUCHCHANNEL, client));
     }
 }
 
@@ -250,7 +251,7 @@ void handleUserMODE(Server& S, Client& client, IRC::command& cmd) {
 void IRC::  handleMODE(Server& S, Client& client, IRC::command& cmd) {
     if (checkNoCommand(S, client, cmd, ERR_NEEDMOREPARAMS)) return;
     std::string &target = cmd.params[0];
-    if (target[0] == '#' || target[1] == '&') {
+    if (!target.empty() && (target[0] == '#' || target[0] == '&')) {
         handleChannelMODE(S, client, cmd);
     } else {
         handleUserMODE(S, client, cmd);
@@ -318,7 +319,8 @@ void IRC::handleINVITE(Server &S, Client &client, command &cmd) {
     } else if (targetChannel->hasClient(targetClient)) {
         S.sendToClient(client, IRC::makeNumStringName(ERR_USERONCHANNEL, client.getNick() + " " + targetClient->getNick() + " " + targetChannel->getDisplayName()));
     } else {
-        S.sendToClient(*targetClient, ":" + client.getMask() + " INVITE " + targetClient->getNick() + " :" + targetChannel->getDisplayName());
+        S.sendToClient(*targetClient, ":" + client.getMask() + " INVITE " + targetClient->getNick() +
+                              " :" + targetChannel->getDisplayName() + "\r\n");
         S.sendToClient(client, IRC::makeNumStringName(RPL_INVITING, targetChannel->getDisplayName() + " " + targetClient->getNick()));
         targetChannel->addInvited(targetClient);
     }
@@ -367,7 +369,7 @@ void IRC::handleKICK(Server &S, Client &client, command &cmd) {
 void IRC::handleTOPIC(Server &S, Client &client, command &cmd) {
     if (checkNoCommand(S, client, cmd, ERR_NEEDMOREPARAMS)) return ;
     if (cmd.params[0][0] != '#' && cmd.params[0][0] != '&') {
-        S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHCHANNEL, cmd.params[1]));
+        S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHCHANNEL, cmd.params[0]));
         return ;
     }
 
