@@ -292,3 +292,26 @@ void    Server::addChannel(Channel c) {
 void    Server::removeChannel(const std::string &name) {
     _channels.erase(name);
 }
+
+void Server::removeClient(int fd) {
+    LOG_INFO << "Disconnecting client (QUIT) fd=" << fd << std::endl;
+
+    Client &client = getClient(fd);
+    for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+        it->second.removeClient(&client);
+    close(fd);
+    _clients.erase(fd);
+
+    for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); pit++ ) {
+        if (pit->fd == fd) {
+            pit = _pfds.erase(pit);
+        break;
+        }
+    }
+}
+void Server::broadcastToCommonChannels(Client& client, const std::string& line ) {
+    for (std::map<std::string, Channel> ::iterator cit = _channels.begin(); cit != _channels.end(); cit++ ){
+        if (cit->second.hasClient(&client))
+            cit->second.broadcast(*this, line);
+    }
+}

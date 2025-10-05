@@ -60,4 +60,7 @@ public:
     void        removeChannel(const std::string &name);
 
     const std::string&  getPassword();
+    void removeClient(int fd);
+    void broadcastToCommonChannels(Client& client, const std::string& line );
 };
+

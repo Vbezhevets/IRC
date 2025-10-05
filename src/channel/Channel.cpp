@@ -282,7 +282,7 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
     }
 }
 
-void    Channel::broadcast(Server &s, std::string &msg) const {
+void    Channel::broadcast(Server &s, const std::string &msg) const {
     std::set<const Client *>::iterator it = getClients().begin();
 
     while (it != getClients().end()) {

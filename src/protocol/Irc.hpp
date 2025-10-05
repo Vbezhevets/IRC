@@ -105,4 +105,6 @@ class IRC {
         static void handleINVITE(Server&, Client&, command&);
         static void handleKICK(Server&, Client&, command&);
         static void handleTOPIC(Server&, Client&, command&);
+        static void handleQUIT(Server&, Client&, command&);
+
 };

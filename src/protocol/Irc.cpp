@@ -59,6 +59,7 @@ void IRC::initHandlers() {
     handlers["INVITE"]  = &handleINVITE;
     handlers["KICK"]    = &handleKICK;
     handlers["TOPIC"]   = &handleTOPIC;
+    handlers["QUIT"]    = &handleQUIT;
 }
 
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {

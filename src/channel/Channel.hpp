@@ -68,7 +68,7 @@ public:
     void    handleModeSet(Server &S, Client &client, std::string modes, IRC::command &cmd);
     void    handleModeUnset(Server &S, Client &client, std::string modes, IRC::command &cmd);
 
-    void    broadcast(Server &s, std::string &msg) const;
+    void    broadcast(Server &s, const std::string &msg) const;
 
 private:
     std::string                 _name;

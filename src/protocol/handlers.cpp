@@ -68,7 +68,7 @@ void IRC::  handleNICK(Server& S, Client& client, IRC::command& cmd){
         std::string oldMask = client.getMask();
         std::string msg = ":" + oldMask + " NICK :" + nick + "\r\n";
         S.sendToClient(client, msg);
-        //S.broadcastToCommonChannels(client, msg); send to all participants in canal about change ;
+        S.broadcastToCommonChannels(client, msg);
     }
 }
 
@@ -138,6 +138,13 @@ void IRC::  handlePRIVMSG(Server& S, Client& client, IRC::command& cmd){
     }
 }
 
+void IRC::handleQUIT(Server& S, Client& client, IRC::command& cmd) {
+   
+    std::string farewell = cmd.trailing.empty() ? "abducted by aliens" : cmd.trailing;
+    S.broadcastToCommonChannels(client, ":" + client.getMask() + " QUIT :" + farewell + "\r\n");
+
+    S.removeClient(client.getFd());
+}
 void IRC::handleJOIN(Server& S, Client& client, IRC::command& cmd) {
     if (checkNoCommand(S, client, cmd, ERR_NEEDMOREPARAMS)) return;
 
@@ -336,7 +343,7 @@ void IRC::handleKICK(Server &S, Client &client, command &cmd) {
     }
 
     if (cmd.params[0][0] != '#' && cmd.params[0][0] != '&') {
-        S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHCHANNEL, cmd.params[1]));
+        S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHCHANNEL, cmd.params[0]));
         return ;
     }
 
