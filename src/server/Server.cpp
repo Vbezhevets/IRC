@@ -49,7 +49,7 @@ void Server::init() {
     if (listen(_listen_fd, CONNECTION_QUEUE_SIZE) < 0)
         throw std::runtime_error("listen error");
 
-    LOG_DEBUG << "Listening on " << _serv_addr.sin_addr.s_addr << std::endl;
+    LOG_DEBUG << "Listening on 0.0.0.0:" << _port << std::endl;
 
     int fl = fcntl(_listen_fd, F_GETFL, 0);
     if (fl == -1)
@@ -111,15 +111,7 @@ void Server::run() {
 
             for (std::vector<int>::iterator it = toDrop.begin(); it != toDrop.end(); ++it) {
                 LOG_INFO << "Dropping client " << *it << std::endl;
-                close(*it);
-                _clients.erase(*it);
-
-                for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); ) {
-                    if (pit->fd == *it)
-                        pit = _pfds.erase(pit);
-                    else
-                        ++pit; //
-                }
+                removeClient(*it);
             }
             toDrop.clear();
         }
