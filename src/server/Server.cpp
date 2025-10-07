@@ -291,15 +291,17 @@ void Server::removeClient(int fd) {
     Client &client = getClient(fd);
     for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end(); ++it)
         it->second.removeClient(&client);
-    close(fd);
-    _clients.erase(fd);
-
+    
     for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); pit++ ) {
         if (pit->fd == fd) {
             pit = _pfds.erase(pit);
-        break;
+            break;
         }
     }
+    struct linger lin = {1, 0};
+    setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin));
+    close(fd);
+    _clients.erase(fd);
 }
 void Server::broadcastToCommonChannels(Client& client, const std::string& line ) {
     for (std::map<std::string, Channel> ::iterator cit = _channels.begin(); cit != _channels.end(); cit++ ){
