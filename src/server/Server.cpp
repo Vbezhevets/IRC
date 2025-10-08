@@ -145,8 +145,7 @@ void Server::acceptNewClients(std::vector<pollfd>& toAdd) {
             continue;
         }
         char ipbuf[INET_ADDRSTRLEN] = {0};
-        // This didnt compile for me
-        // if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == nullptr)
+
         if(inet_ntop(AF_INET, &addr.sin_addr, ipbuf, sizeof(ipbuf)) == NULL)
             throw std::runtime_error("failed to get client's adress");
         std::string hostStr(ipbuf);
@@ -211,11 +210,7 @@ bool Server::handleWrite(int fd) {
         } else {
             setEvents(fd, POLLOUT | POLLIN);
         }
-    } else {
-        // EWOULDBLOCK OR EAGAIN -> do nothing
-        // rely on recv() to handle closed connection
-    }
-
+    } 
     setEvents(fd, POLLIN);
     return true;
 }

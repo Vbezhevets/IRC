@@ -58,14 +58,15 @@ void IRC::  handleNICK(Server& S, Client& client, IRC::command& cmd){
         S.sendToClient(client, IRC::makeNumStringName(ERR_ERRONEUSNICKNAME, nick));
         return;
     }
+    bool wasReg = client.isRegistered();
+    std::string oldMask = client.getMask();
     if (S.setNick(client, nick) == ERR_NICKNAMEINUSE) {
         S.sendToClient(client, IRC::makeNumString(ERR_NICKNAMEINUSE, client, nick));
         return;
     }
-    if (!client.isRegistered())
-        S.tryRegister(client);
-    else {
-        std::string oldMask = client.getMask();
+    
+    S.tryRegister(client);
+    if (wasReg) {
         std::string msg = ":" + oldMask + " NICK :" + nick + "\r\n";
         S.sendToClient(client, msg);
         S.broadcastToCommonChannels(client, msg);
