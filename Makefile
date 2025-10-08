@@ -6,6 +6,10 @@ NAME     := ircserv
 CXX      := c++
 CXXFLAGS :=  -std=c++98 -Wall -Wextra -Werror
 
+ifeq ($(DEBUG), 1)
+	CXXFLAGS += -g3
+endif
+
 SRC_DIR := ./src
 UTIL_DIR := $(SRC_DIR)/utils
 SERVER_DIR := $(SRC_DIR)/server

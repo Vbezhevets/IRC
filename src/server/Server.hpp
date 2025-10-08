@@ -40,6 +40,8 @@ private:
     bool    handleRead(int fd);
     bool    handleWrite(int fd);
     void    acceptNewClients(std::vector<pollfd>& toAdd);
+    bool    hasClient(Client &) const;
+    bool    hasClient(int fd) const;
 
 public:
 

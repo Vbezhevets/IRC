@@ -4,15 +4,25 @@
 #include <string>
 #include "../server/Server.hpp"
 #include "../client/Client.hpp"
-#include "../utils/utils.hpp"
 
-Channel::Channel() {}
+Channel::Channel():
+    _name(""),
+    _key(""),
+    _topic(""),
+    _clients(std::set<const Client *>()),
+    _operators(std::set<const Client *>()),
+    _limit(0),
+    _mode(0)
+{}
 
 Channel::Channel(std::string &name, Client *op) :
     _name(name),
     _key(""),
+    _topic(""),
     _clients(std::set<const Client *>()),
-    _operators(std::set<const Client *>())
+    _operators(std::set<const Client *>()),
+    _limit(0),
+    _mode(0)
 {
     _clients.insert(op);
     _operators.insert(op);
@@ -21,8 +31,11 @@ Channel::Channel(std::string &name, Client *op) :
 Channel::Channel(std::string &name, Client *op, std::string &key) :
     _name(name),
     _key(key),
+    _topic(""),
     _clients(std::set<const Client *>()),
-    _operators(std::set<const Client *>())
+    _operators(std::set<const Client *>()),
+    _limit(0),
+    _mode(0)
 {
     _clients.insert(op);
     _operators.insert(op);
@@ -31,9 +44,7 @@ Channel::Channel(std::string &name, Client *op, std::string &key) :
 Channel::~Channel() {}
 
 Channel::Channel(const Channel& other) {
-    if (this != &other) {
-        *this = other;
-    }
+    *this = other;
 }
 
 Channel &Channel::operator=(const Channel& other) {
@@ -41,6 +52,11 @@ Channel &Channel::operator=(const Channel& other) {
         this->_clients = other._clients;
         this->_name = other._name;
         this->_operators = other._operators;
+        this->_mode = other._mode;
+        this->_key = other._key;
+        this->_limit = other._limit;
+        this->_topic = other._topic;
+        this->_invited = other._invited;
     }
     return (*this);
 }
@@ -199,11 +215,8 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
         args.push(cmd.params[i]);
     }
 
-    LOG_DEBUG << "mode in handleModeSet " << modes << std::endl;
-
     for (size_t i = 0; i < modes.size(); i++) {
         char c = modes[i];
-        LOG_DEBUG << "mode in loop " << c << std::endl;
         switch (c) {
             case 'i':
                 this->setMode(MODE_INVITE_ONLY);
@@ -221,9 +234,8 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
                     args.pop();
                     Client *targetClient = S.getClientByNick(param);
                     if (!targetClient) {
-                        S.sendToClient(client, IRC::makeNumStringName(ERR_USERNOTINCHANNEL, cmd.params[2] + this->getDisplayName()));
-                    }
-                    if (this->hasClient(targetClient)) {
+                        S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHNICK, param + " " + this->getDisplayName()));
+                    } else if (this->hasClient(targetClient)) {
                         if (!this->isOperator(targetClient)) {
                             this->addOperator(targetClient);
                             successfulModes += c;
@@ -243,7 +255,7 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
                     size_t limit = 0;
                     s >> limit;
                     if (s.fail()) {
-                        S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, s.str()));
+                        S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, param));
                     } else {
                         this->setLimit(limit);
                         successfulModes += c;
@@ -257,9 +269,8 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
                 } else {
                     std::string param = args.front();
                     args.pop();
-                    LOG_DEBUG << "key param " << param << std::endl;
                     if (this->hasMode(MODE_KEY_PROTECTED)) {
-                        S.sendToClient(client, IRC::makeNumStringChannel(ERR_NEEDMOREPARAMS, *this));
+                        S.sendToClient(client, IRC::makeNumStringChannel(ERR_KEYSET, *this));
                     } else {
                         this->setMode(MODE_KEY_PROTECTED);
                         this->setKey(param);
@@ -273,7 +284,7 @@ void Channel::handleModeSet(Server &S, Client &client, std::string modes, IRC::c
         }
     }
     if (!successfulModes.empty()) {
-        std::string modeChangeMsg = ":" + client.getMask() + " MODE " + getDisplayName() + " +" + modes;
+        std::string modeChangeMsg = ":" + client.getMask() + " MODE " + getDisplayName() + " +" + successfulModes;
         for (size_t i = 0; i < successfulParams.size(); i++) {
             modeChangeMsg += " " + successfulParams[i];
         }
@@ -286,7 +297,6 @@ void    Channel::broadcast(Server &s, const std::string &msg) const {
     std::set<const Client *>::iterator it = getClients().begin();
 
     while (it != getClients().end()) {
-        LOG_DEBUG << "Sending to client: " << (*it)->getNick() << std::endl;
         s.sendToClient(*const_cast<Client *>(*it), msg);
         it++;
     }
@@ -294,6 +304,9 @@ void    Channel::broadcast(Server &s, const std::string &msg) const {
 
 void Channel::handleModeUnset(Server &S, Client &client, std::string modes, IRC::command &cmd) {
     std::queue<std::string> args;
+    std::string successfulModes = "";
+    std::vector<std::string> successfulParams;
+
     for (size_t i = 2; i < cmd.params.size(); i++) {
         args.push(cmd.params[i]);
     }
@@ -303,9 +316,11 @@ void Channel::handleModeUnset(Server &S, Client &client, std::string modes, IRC:
         switch (c) {
             case 'i':
                 this->unsetMode(MODE_INVITE_ONLY);
+                successfulModes += c;
                 break;
             case 't':
                 this->unsetMode(MODE_TOPIC_OPERATOR_ONLY);
+                successfulModes += c;
                 break;
             case 'o':
                 if (args.empty()) {
@@ -316,27 +331,37 @@ void Channel::handleModeUnset(Server &S, Client &client, std::string modes, IRC:
                     Client *targetClient = S.getClientByNick(param);
                     if (!targetClient) {
                         S.sendToClient(client, IRC::makeNumString(ERR_NOSUCHNICK, client));
-                        return ;
-                    }
-                    if (this->isOperator(targetClient)) {
+                    } else if (this->isOperator(targetClient)) {
                         this->removeOperator(targetClient);
+                        successfulModes += c;
+                        successfulParams.push_back(param);
                     } else {
                         S.sendToClient(client, IRC::makeNumStringName(ERR_USERNOTINCHANNEL, param + " " + this->getDisplayName()));
-                        return ;
                     }
                 }
                 break;
             case 'l':
                 this->unsetMode(MODE_USER_LIMIT);
                 this->setLimit(0);
+                successfulModes += c;
                 break;
             case 'k':
                 this->unsetMode(MODE_KEY_PROTECTED);
                 this->setKey("");
+                successfulModes += c;
                 break;
             default:
                 S.sendToClient(client, IRC::makeNumStringName(ERR_UNKNOWNMODE, std::string() + c));
-                return ;
+                break;
         }
+    }
+
+    if (!successfulModes.empty()) {
+        std::string modeChangeMsg = ":" + client.getMask() + " MODE " + getDisplayName() + " -" + successfulModes;
+        for (size_t i = 0; i < successfulParams.size(); i++) {
+            modeChangeMsg += " " + successfulParams[i];
+        }
+        modeChangeMsg += "\r\n";
+        broadcast(S, modeChangeMsg);
     }
 }

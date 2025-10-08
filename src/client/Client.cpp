@@ -1,10 +1,24 @@
 #include "Client.hpp"
 #include "../protocol/Irc.hpp"
+#include "../utils/utils.hpp"
 
 Client::Client() {}
 
-Client::Client(int fd, std::string host) : _fd(fd), _nick("*"), _user("*"), _host(host), _passOk(false),  _hasNick(false), _hasUser(false),
-  _isRegistered(false), _isWelcomed(false),  _last_active(std::time(NULL)), _awaitingPong(false) {}
+Client::Client(int fd, std::string host) :
+    _fd(fd),
+    _in_buff(std::string()),
+    _out_buff_for_client(std::string()),
+    _nick("*"),
+    _user("*"),
+    _host(host),
+    _passOk(false),
+    _hasNick(false),
+    _hasUser(false),
+    _isRegistered(false),
+    _isWelcomed(false),
+    _shouldQuit(false),
+    _last_active(std::time(NULL)),
+    _awaitingPong(false) {}
 
 Client::~Client() {}
 
@@ -12,6 +26,14 @@ void Client::tryMakeRegistered() {
     if (_passOk && _hasNick && _hasUser && !_isRegistered) {
         _isRegistered = true;
     }
+}
+
+void Client::setShouldQuit() {
+    _shouldQuit = true;
+}
+
+bool Client::shouldQuit() const {
+    return _shouldQuit;
 }
 
 void Client::appendInBuff(const char* data, std::size_t n) {
@@ -29,6 +51,7 @@ std::string& Client::getOutBuff() {
 void Client::addToOutBuff(const std::string& s) {
     std::string toAdd = s;
     if (s.size() > MAX_MESSAGE_LEN + 2) {
+        LOG_INFO << "Message too long: got " << s.size() << std::endl;
         toAdd = s.substr(0, MAX_MESSAGE_LEN) + "\r\n";
     }
     _out_buff_for_client += toAdd;
@@ -37,7 +60,6 @@ void Client::addToOutBuff(const std::string& s) {
 bool Client::wantsWrite() const {
     return !_out_buff_for_client.empty();
 }
-
 
 std::time_t Client::lastActive() const {
     return _last_active;

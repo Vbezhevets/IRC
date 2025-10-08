@@ -49,7 +49,7 @@ void Server::init() {
     if (listen(_listen_fd, CONNECTION_QUEUE_SIZE) < 0)
         throw std::runtime_error("listen error");
 
-    LOG_DEBUG << "Listening on 0.0.0.0:" << _port << std::endl;
+    LOG_INFO << "Listening on 0.0.0.0:" << _port << std::endl;
 
     int fl = fcntl(_listen_fd, F_GETFL, 0);
     if (fl == -1)
@@ -106,7 +106,7 @@ void Server::run() {
                 }
             }
         }
-        tick(toDrop); //checking existing for hanging
+        tick(toDrop); // checking existing for hanging
         if (!toDrop.empty()) {
 
             for (std::vector<int>::iterator it = toDrop.begin(); it != toDrop.end(); ++it) {
@@ -123,6 +123,9 @@ void Server::run() {
             _pfds.insert(_pfds.end(), toAdd.begin(), toAdd.end());
             toAdd.clear();
         }
+    }
+    for (size_t i = 0; i < _pfds.size(); i++) {
+        close(_pfds[i].fd);
     }
 }
 
@@ -171,27 +174,45 @@ Client& Server::getClient(int fd) {
     return it->second;
 }
 
+bool Server::hasClient(Client &client) const {
+    if (_clients.find(client.getFd()) != _clients.end()) {
+        return true;
+    }
+    return false;
+}
+
+bool Server::hasClient(int fd) const {
+    if (_clients.find(fd) != _clients.end()) {
+        return true;
+    }
+    return false;
+}
+
 bool Server::handleRead(int fd) {
     Client& client = getClient(fd);
     char buff[READ_BUF_SIZE];
 
-    ssize_t n = recv(fd, buff, sizeof(buff), 0);
-    if (n > 0) {
-        client.appendInBuff(buff, static_cast<std::size_t>(n));
+    if (!client.shouldQuit()) {
+        ssize_t n = recv(fd, buff, sizeof(buff), 0);
+        if (n > 0) {
+            client.appendInBuff(buff, static_cast<std::size_t>(n));
 
-        std::string msg;
-        while (IRC::extractOneMessage(client.getInBuff(), msg))
-            IRC::handleMessage(*this, client, msg);
+            std::string msg;
+            while (hasClient(fd) && IRC::extractOneMessage(client.getInBuff(), msg))
+                IRC::handleMessage(*this, client, msg);
 
-        if (client.wantsWrite()) {
-            setEvents(fd, POLLIN | POLLOUT);
+            if (hasClient(fd) && client.wantsWrite()) {
+                setEvents(fd, POLLIN | POLLOUT);
+            }
         }
-    }
 
-    if (n == 0) {
-        return false; // peer closed
+        if (n == 0) {
+            return false; // peer closed
+        } else {
+            return true;
+        }
     } else {
-        return true;
+        return false;
     }
 }
 
@@ -210,7 +231,10 @@ bool Server::handleWrite(int fd) {
         } else {
             setEvents(fd, POLLOUT | POLLIN);
         }
-    } 
+    }
+    if (client.shouldQuit()) {
+        return false;
+    }
     setEvents(fd, POLLIN);
     return true;
 }
@@ -284,20 +308,28 @@ void Server::removeClient(int fd) {
     LOG_INFO << "Disconnecting client (QUIT) fd=" << fd << std::endl;
 
     Client &client = getClient(fd);
-    for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end(); ++it)
+    for (std::map<std::string, Channel>::iterator it = _channels.begin(); it != _channels.end();) {
         it->second.removeClient(&client);
-    
+        if (it->second.getClients().empty()) {
+            _channels.erase(it++);
+        } else {
+            ++it;
+        }
+    }
+
     for (std::vector<pollfd>::iterator pit = _pfds.begin(); pit != _pfds.end(); pit++ ) {
         if (pit->fd == fd) {
             pit = _pfds.erase(pit);
+            LOG_INFO << "Removing fd=" << fd << " from _pfds" << std::endl;
             break;
         }
     }
-    struct linger lin = {1, 0};
+    struct linger lin = {1, 1};
     setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, sizeof(lin));
     close(fd);
     _clients.erase(fd);
 }
+
 void Server::broadcastToCommonChannels(Client& client, const std::string& line ) {
     for (std::map<std::string, Channel> ::iterator cit = _channels.begin(); cit != _channels.end(); cit++ ){
         if (cit->second.hasClient(&client))

@@ -20,6 +20,8 @@ private:
     bool        _isRegistered;
     bool        _isWelcomed;
 
+    bool        _shouldQuit;
+
     std::time_t _last_active;
     bool        _awaitingPong;
 
@@ -58,6 +60,9 @@ public:
     bool isRegistered() const;
     bool isWelcomed() const;
     void setWelcomed();
+
+    bool shouldQuit() const;
+    void setShouldQuit();
 
     std::string getMask() const ;
 };

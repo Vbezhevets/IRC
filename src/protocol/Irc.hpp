@@ -1,9 +1,9 @@
 #pragma once
+
 #include <string>
 #include <sys/poll.h>
 #include <vector>
 #include <map>
-#include <iostream>
 #include "../client/Client.hpp"
 
 #define MAX_MESSAGE_LEN 510
@@ -20,6 +20,7 @@ enum Replies {
 enum ErrReplies {
     ERR_NOSUCHNICK          = 401,
     ERR_NOSUCHCHANNEL       = 403,
+
 
     ERR_NOORIGIN            = 409,
     ERR_NORECIPIENT         = 411,
@@ -43,7 +44,10 @@ enum ErrReplies {
     ERR_UNKNOWNMODE         = 472,
     ERR_INVITEONLYCHAN      = 473,
     ERR_BADCHANNELKEY       = 475,
+    ERR_BADCHANMASK         = 476,
     ERR_CHANOPRIVNEEDED     = 482,
+
+    ERR_UMODEUNKNOWNFLAG     = 501,
 };
 
 class Server;
@@ -62,17 +66,6 @@ class IRC {
             std::vector <std::string> params;
             std::string trailing;
             bool        had_trailing;
-
-            void display() {
-                std::cerr
-                    << "PREF: " << prefix << std::endl
-                    << "CMD: " << cmd << std::endl
-                    << "PARAMS: " << std::endl;
-                for (size_t i = 0; i < params.size(); i++) {
-                    std::cerr << "\t" << i << ": " << params[i] << std::endl;
-                }
-                std::cerr << "TRAIL: " << trailing << std::endl;
-            }
         };
 
         //handlers for commands:

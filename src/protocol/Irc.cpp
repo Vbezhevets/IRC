@@ -3,7 +3,6 @@
 #include <vector>
 #include <cctype>
 #include <cstdio>
-#include "../utils/utils.hpp"
 #include "../channel/Channel.hpp"
 #include "../client/Client.hpp"
 #include "../server/Server.hpp"
@@ -13,6 +12,7 @@ std::map<int, std::string> IRC::numAnswers;
 
 void IRC::initNumAnswers() {
     numAnswers[ERR_NOSUCHNICK]          = "No such nick/channel";
+    numAnswers[ERR_NOSUCHCHANNEL]       = "No such channel";
     numAnswers[ERR_NOORIGIN]            = "No origin specified";
     numAnswers[ERR_NORECIPIENT]         = "No recipient given";
     numAnswers[ERR_NOTEXTTOSEND]        = "No text to send";
@@ -40,10 +40,12 @@ void IRC::initNumAnswers() {
 
     numAnswers[ERR_UNKNOWNMODE]         = "is unknown mode char to me";
     numAnswers[ERR_BADCHANNELKEY]       = "Cannot join channel (+k)";
+    numAnswers[ERR_BADCHANMASK]         = "Bad channel mask";
     numAnswers[ERR_CHANNELISFULL]       = "Cannot join channel (+l)";
     numAnswers[ERR_INVITEONLYCHAN]      = "Cannot join channel (+i)";
     numAnswers[ERR_CHANOPRIVNEEDED]     = "You're not channel operator";
 
+    numAnswers[ERR_UMODEUNKNOWNFLAG]     = "Unkown MODE flag";
 }
 
 void IRC::initHandlers() {
@@ -62,7 +64,6 @@ void IRC::initHandlers() {
     handlers["QUIT"]    = &handleQUIT;
 }
 
-
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     std::size_t pos = buff.find("\n");
     if (pos == std::string::npos) return false;
@@ -75,7 +76,6 @@ bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
     buff.erase(0, pos + 1);
     return true;
 }
-
 
 static inline void strToUpper(std::string &s) {
     for (std::size_t i = 0; i < s.size(); ++i)
@@ -101,7 +101,6 @@ std::string IRC:: makeNumStringName(int n, const std::string &name, const std::s
         reply += " :" + text;
     reply += "\r\n";
 
-    LOG_DEBUG << "Sending Response: " << reply << std::endl;
     return reply;
 }
 
@@ -116,28 +115,24 @@ std::string IRC:: makeNumString(int n, Client& client, const std::string &prefix
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     client.updateActive();
 
-    LOG_DEBUG << "Received Message " << msg << " from client " << client.getFd() << std::endl;
-
     command tempCmd = parseLine(msg);
     if (tempCmd.cmd.empty()) {
        s.sendToClient(client, IRC::makeNumString(ERR_UNKNOWNCOMMAND, client, "")); return;
     }
 
-    tempCmd.display();
-
     if (tempCmd.cmd == "PRIVMSG"
         || tempCmd.cmd == "JOIN"
         || tempCmd.cmd == "MODE"
         || tempCmd.cmd == "PART"
-        || tempCmd.cmd == "INVITE" 
-        || tempCmd.cmd == "KICK" 
+        || tempCmd.cmd == "INVITE"
+        || tempCmd.cmd == "KICK"
         || tempCmd.cmd == "TOPIC") {
         if (!client.isRegistered()) {
             s.sendToClient(client, IRC::makeNumString(ERR_NOTREGISTERED, client));
             return ;
         }
-    } 
-    
+    }
+
 
     std::map <std::string, handler> ::iterator it = handlers.find(tempCmd.cmd) ;
     if (it != handlers.end())
