@@ -220,12 +220,12 @@ void Server::tick(std::vector<int>& toDrop) {
     for (clIter it = _clients.begin(); it != _clients.end(); ++it ){
         Client& client = it->second;
 
-        if (!client.isAwaitingPong() && now - client.lastActive() > 120 ) {
+        if (!client.isAwaitingPong() && now - client.lastActive() > 240 ) {
             client.setAwaitingPong(true);
             client.addToOutBuff("PING :tick\r\n");
             setEvents(client.getFd(), POLLIN | POLLOUT);
         }
-        else if (client.isAwaitingPong() && now - client.lastActive() > 150){
+        else if (client.isAwaitingPong() && now - client.lastActive() > 250){
             toDrop.push_back(client.getFd());
         }
     }

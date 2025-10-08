@@ -62,16 +62,20 @@ void IRC::initHandlers() {
     handlers["QUIT"]    = &handleQUIT;
 }
 
+
 bool IRC::  extractOneMessage(std::string& buff, std::string& msg) {
-    std::size_t pos = buff.find("\r\n");
-    if (pos != std::string::npos) {
-        size_t msgEnd = (pos > MAX_MESSAGE_LEN) ? MAX_MESSAGE_LEN : pos;
-        msg = buff.substr(0, msgEnd);
-        buff.erase(0, pos + 2);
-        return true;
-    } else
-        return false;
+    std::size_t pos = buff.find("\n");
+    if (pos == std::string::npos) return false;
+    size_t end = pos;
+    if (end > 0 && buff[end - 1] == '\r')
+        end--;
+    if (end > MAX_MESSAGE_LEN)
+        end = MAX_MESSAGE_LEN;
+    msg.assign(buff, 0, end);
+    buff.erase(0, pos + 1);
+    return true;
 }
+
 
 static inline void strToUpper(std::string &s) {
     for (std::size_t i = 0; i < s.size(); ++i)
