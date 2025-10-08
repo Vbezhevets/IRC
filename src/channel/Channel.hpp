@@ -46,6 +46,8 @@ public:
     bool    isOperator(const Client *op) const;
     bool    isInvited(const Client *op) const;
 
+    bool    hasOperators(void) const;
+
     void    setMode(int mode);
     void    unsetMode(int mode);
     int     getMode(void) const;

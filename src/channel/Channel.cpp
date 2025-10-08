@@ -121,6 +121,10 @@ bool Channel::isInvited(const Client *client) const {
     return _invited.count(client) != 0;
 }
 
+bool Channel::hasOperators(void) const {
+    return !_operators.empty();
+}
+
 int     Channel::getMode(void) const {
     return _mode;
 }

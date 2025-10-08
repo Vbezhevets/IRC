@@ -6,6 +6,7 @@
 #include "../channel/Channel.hpp"
 #include "../client/Client.hpp"
 #include "../server/Server.hpp"
+#include "../utils/utils.hpp"
 
 std::map<std::string, IRC::handler> IRC::handlers;
 std::map<int, std::string> IRC::numAnswers;
@@ -115,6 +116,8 @@ std::string IRC:: makeNumString(int n, Client& client, const std::string &prefix
 void IRC:: handleMessage(Server& s, Client& client, const std::string& msg) {
     client.updateActive();
 
+    LOG_INFO << "Received Message \"" << msg << "\" from Client " << client.getNick() << std::endl;
+
     command tempCmd = parseLine(msg);
     if (tempCmd.cmd.empty()) {
        s.sendToClient(client, IRC::makeNumString(ERR_UNKNOWNCOMMAND, client, "")); return;
@@ -148,6 +151,11 @@ static void trimRight(std::string &s) {
 
 IRC::command IRC:: parseLine( std::string s) {
     command out;
+    out.had_trailing = false;
+    out.cmd = "";
+    out.trailing = "";
+    out.params = std::vector<std::string>();
+    out.prefix = "";
     trimRight(s);
     if (s.empty()) return out;
 
@@ -186,4 +194,4 @@ IRC::command IRC:: parseLine( std::string s) {
     }
 
     return out;
-}
+};

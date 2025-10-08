@@ -61,7 +61,7 @@ void IRC::  handleNICK(Server& S, Client& client, IRC::command& cmd){
     bool wasReg = client.isRegistered();
     std::string oldMask = client.getMask();
     if (S.setNick(client, nick) == ERR_NICKNAMEINUSE) {
-        S.sendToClient(client, IRC::makeNumString(ERR_NICKNAMEINUSE, client, nick));
+        S.sendToClient(client, IRC::makeNumString(ERR_NICKNAMEINUSE, client, "", nick));
         return;
     }
 
@@ -76,7 +76,7 @@ void IRC::  handleNICK(Server& S, Client& client, IRC::command& cmd){
 void IRC::  handleUSER(Server& S, Client& client, IRC::command& cmd){
     if (checkNoCommand(S, client, cmd, ERR_NEEDMOREPARAMS)) return;
     if (cmd.params.size() < 3 || cmd.trailing.empty()) {
-        S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client, "USER"));
+        S.sendToClient(client, IRC::makeNumString(ERR_NEEDMOREPARAMS, client, "", "USER"));
         return;
     }
     client.setUser(cmd.params[0], cmd.trailing);
@@ -129,7 +129,7 @@ void IRC::  handlePRIVMSG(Server& S, Client& client, IRC::command& cmd){
     } else {
         Client *reciept = S.getClientByNick(cmd.params[0]);
         if (!reciept) {
-            S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHNICK, client.getNick(), cmd.params[0])); return;
+            S.sendToClient(client, IRC::makeNumStringName(ERR_NOSUCHNICK, client.getNick() + " " + cmd.params[0])); return;
         }
         S.sendToClient(*reciept,
                   ":" + client.getMask() + " PRIVMSG " + reciept->getNick() + " :" + cmd.trailing + "\r\n");
@@ -180,6 +180,9 @@ void IRC::handleJOIN(Server& S, Client& client, IRC::command& cmd) {
         }
     }
     c->addClient(&client);
+    if (!c->hasOperators()) {
+        c->addOperator(&client);
+    }
 
     std::string joinMsg = ":" + client.getMask() + " JOIN :" + c->getDisplayName() + "\r\n";
     for (std::set<const Client*>::iterator it = c->getClients().begin();
